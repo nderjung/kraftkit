@@ -41,7 +41,6 @@ import (
 	"kraftkit.sh/internal/cmdfactory"
 	"kraftkit.sh/internal/cmdutil"
 	"kraftkit.sh/iostreams"
-	"kraftkit.sh/log"
 	"kraftkit.sh/make"
 	"kraftkit.sh/packmanager"
 	"kraftkit.sh/schema"
@@ -49,14 +48,12 @@ import (
 
 type CleanOptions struct {
 	PackageManager func(opts ...packmanager.PackageManagerOption) (packmanager.PackageManager, error)
-	Logger         func() (log.Logger, error)
 	IO             *iostreams.IOStreams
 }
 
 func CleanCmd(f *cmdfactory.Factory) *cobra.Command {
 	opts := &CleanOptions{
 		PackageManager: f.PackageManager,
-		Logger:         f.Logger,
 		IO:             f.IOStreams,
 	}
 
@@ -102,15 +99,9 @@ func cleanRun(copts *CleanOptions, workdir string) error {
 		return err
 	}
 
-	plog, err := copts.Logger()
-	if err != nil {
-		return err
-	}
-
 	// Initialize at least the configuration options for a project
 	projectOpts, err := schema.NewProjectOptions(
 		nil,
-		schema.WithLogger(plog),
 		schema.WithWorkingDirectory(workdir),
 		schema.WithDefaultConfigPath(),
 		schema.WithPackageManager(&pm),
@@ -128,6 +119,7 @@ func cleanRun(copts *CleanOptions, workdir string) error {
 	}
 
 	return project.Clean(
+		ctx,
 		make.WithExecOptions(
 			exec.WithStdin(copts.IO.In),
 			exec.WithStdout(copts.IO.Out),

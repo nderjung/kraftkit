@@ -65,8 +65,6 @@ type LoaderOptions struct {
 	projectNameImperativelySet bool
 	// Slice of component options to apply to each loaded component
 	componentOptions []component.ComponentOption
-	// Access to a general purpose logger
-	log log.Logger
 }
 
 func (o *LoaderOptions) SetProjectName(name string, imperativelySet bool) {
@@ -82,12 +80,6 @@ func (o LoaderOptions) GetProjectName() (string, bool) {
 // sections
 func WithSkipValidation(opts *LoaderOptions) {
 	opts.SkipValidation = true
-}
-
-func withLoaderLogger(l log.Logger) func(*LoaderOptions) {
-	return func(lopts *LoaderOptions) {
-		lopts.log = l
-	}
 }
 
 func withNamePrecedence(absWorkingDir string, popts *ProjectOptions) func(*LoaderOptions) {
@@ -126,7 +118,6 @@ func Load(details config.ConfigDetails, options ...func(*LoaderOptions)) (*app.A
 
 	opts.componentOptions = append(opts.componentOptions,
 		component.WithWorkdir(details.WorkingDir),
-		component.WithLogger(opts.log),
 	)
 
 	// If we have a set package manager, we can directly inject this to each

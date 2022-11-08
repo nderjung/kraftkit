@@ -56,7 +56,6 @@ type Factory struct {
 	PluginManager  func() (*plugins.PluginManager, error)
 	ConfigManager  func() (*config.ConfigManager, error)
 	PackageManager func(opts ...packmanager.PackageManagerOption) (packmanager.PackageManager, error)
-	Logger         func() (log.Logger, error)
 	HttpClient     func() (*http.Client, error)
 }
 
@@ -71,9 +70,6 @@ func New(opts ...FactoryOption) *Factory {
 
 	// Depends on Config, IOStreams
 	f.HttpClient = httpClientFunc(f)
-
-	// Depends on Config, IOStreams
-	f.Logger = loggerFunc(f)
 
 	// Depends on Config, HttpClient, and IOStreams
 	f.PluginManager = pluginManagerFunc(f)
@@ -133,7 +129,7 @@ func ioStreams(f *Factory) *iostreams.IOStreams {
 	if cfgm.Config.NoPrompt {
 		io.SetNeverPrompt(true)
 	} else if (io.ColorEnabled() || io.IsStdoutTTY()) && cfgm.Config.Log.Type == "" {
-		cfgm.Config.Log.Type = logger.LoggerTypeToString(logger.FANCY)
+		cfgm.Config.Log.Type = log.LoggerTypeToString(log.FANCY)
 	}
 
 	// Pager precedence
@@ -164,20 +160,6 @@ func httpClientFunc(f *Factory) func() (*http.Client, error) {
 	}
 }
 
-func loggerFunc(f *Factory) func() (log.Logger, error) {
-	return func() (log.Logger, error) {
-		cfgm, err := f.ConfigManager()
-		if err != nil {
-			return nil, err
-		}
-
-		l := logger.NewLogger(f.IOStreams.Out, f.IOStreams.ColorScheme())
-		l.SetLevel(logger.LogLevelFromString(cfgm.Config.Log.Level))
-
-		return l, nil
-	}
-}
-
 func packageManagerFunc(f *Factory) func(opts ...packmanager.PackageManagerOption) (packmanager.PackageManager, error) {
 	return func(opts ...packmanager.PackageManagerOption) (packmanager.PackageManager, error) {
 		cfgm, err := f.ConfigManager()
@@ -185,15 +167,9 @@ func packageManagerFunc(f *Factory) func(opts ...packmanager.PackageManagerOptio
 			return nil, err
 		}
 
-		log, err := f.Logger()
-		if err != nil {
-			return nil, err
-		}
-
 		// Add access to global config and the instantiated logger to the options
 		opts = append(opts, []packmanager.PackageManagerOption{
 			packmanager.WithConfigManager(cfgm),
-			packmanager.WithLogger(log),
 		}...)
 
 		options, err := packmanager.NewPackageManagerOptions(
@@ -228,13 +204,7 @@ func pluginManagerFunc(f *Factory) func() (*plugins.PluginManager, error) {
 			return nil, perr
 		}
 
-		var l log.Logger
-		l, perr = f.Logger()
-		if perr != nil {
-			return nil, perr
-		}
-
-		pm = plugins.NewPluginManager(cfgm.Config.Paths.Plugins, l)
+		pm = plugins.NewPluginManager(cfgm.Config.Paths.Plugins)
 
 		return pm, perr
 	}

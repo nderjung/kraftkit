@@ -63,7 +63,6 @@ import (
 type runOptions struct {
 	PackageManager func(opts ...packmanager.PackageManagerOption) (packmanager.PackageManager, error)
 	ConfigManager  func() (*config.ConfigManager, error)
-	Logger         func() (log.Logger, error)
 	IO             *iostreams.IOStreams
 
 	// Command-line arguments
@@ -92,7 +91,6 @@ func RunCmd(f *cmdfactory.Factory) *cobra.Command {
 	opts := &runOptions{
 		PackageManager: f.PackageManager,
 		ConfigManager:  f.ConfigManager,
-		Logger:         f.Logger,
 		IO:             f.IOStreams,
 	}
 
@@ -190,11 +188,6 @@ func RunCmd(f *cmdfactory.Factory) *cobra.Command {
 func runRun(opts *runOptions, args ...string) error {
 	var err error
 
-	plog, err := opts.Logger()
-	if err != nil {
-		return err
-	}
-
 	cfgm, err := opts.ConfigManager()
 	if err != nil {
 		return err
@@ -216,14 +209,7 @@ func runRun(opts *runOptions, args ...string) error {
 	}
 
 	debug := logger.LogLevelFromString(cfgm.Config.Log.Level) >= logger.DEBUG
-	var msopts []machine.MachineStoreOption
-	if debug {
-		msopts = append(msopts,
-			machine.WithMachineStoreLogger(plog),
-		)
-	}
-
-	store, err := machine.NewMachineStoreFromPath(cfgm.Config.RuntimeDir, msopts...)
+	store, err := machine.NewMachineStoreFromPath(cfgm.Config.RuntimeDir)
 	if err != nil {
 		return fmt.Errorf("could not access machine store: %v", err)
 	}
@@ -232,7 +218,6 @@ func runRun(opts *runOptions, args ...string) error {
 		machinedriveropts.WithBackground(opts.Detach),
 		machinedriveropts.WithRuntimeDir(cfgm.Config.RuntimeDir),
 		machinedriveropts.WithMachineStore(store),
-		machinedriveropts.WithLogger(plog),
 		machinedriveropts.WithDebug(debug),
 		machinedriveropts.WithExecOptions(
 			exec.WithStdout(os.Stdout),
@@ -291,7 +276,6 @@ func runRun(opts *runOptions, args ...string) error {
 		target := opts.Target
 		projectOpts, err := schema.NewProjectOptions(
 			nil,
-			schema.WithLogger(plog),
 			schema.WithWorkingDirectory(workdir),
 			schema.WithDefaultConfigPath(),
 			// schema.WithPackageManager(&pm),
@@ -398,7 +382,7 @@ func runRun(opts *runOptions, args ...string) error {
 		return err
 	}
 
-	plog.Infof("created %s instance %s", driverType.String(), mid.ShortString())
+	log.G(ctx).Infof("created %s instance %s", driverType.String(), mid.ShortString())
 
 	// Start the machine
 	if err := driver.Start(ctx, mid); err != nil {
@@ -409,7 +393,7 @@ func runRun(opts *runOptions, args ...string) error {
 		// Spawn an event monitor or attach to an existing monitor
 		_, err = os.Stat(cfgm.Config.EventsPidFile)
 		if err != nil && os.IsNotExist(err) {
-			plog.Debugf("launching event monitor...")
+			log.G(ctx).Debugf("launching event monitor...")
 
 			// Spawn and detach a new events monitor
 			e, err := exec.NewExecutable(os.Args[0], nil, "events", "--quit-together")
@@ -447,9 +431,9 @@ func runRun(opts *runOptions, args ...string) error {
 
 		// Remove the instance on Ctrl+C if the --rm flag is passed
 		if opts.Remove {
-			plog.Infof("removing %s...", mid.ShortString())
+			log.G(ctx).Infof("removing %s...", mid.ShortString())
 			if err := driver.Destroy(ctx, mid); err != nil {
-				plog.Errorf("could not remove %s: %v", mid, err)
+				log.G(ctx).Errorf("could not remove %s: %v", mid, err)
 			}
 		}
 
@@ -458,12 +442,12 @@ func runRun(opts *runOptions, args ...string) error {
 
 	// Tail the logs if -d|--detach is not provided
 	if !opts.Detach {
-		plog.Infof("starting to tail %s logs...", mid.ShortString())
+		log.G(ctx).Infof("starting to tail %s logs...", mid.ShortString())
 
 		go func() {
 			events, errs, err := driver.ListenStatusUpdate(ctx, mid)
 			if err != nil {
-				plog.Errorf("could not listen for machine updates: %v", err)
+				log.G(ctx).Errorf("could not listen for machine updates: %v", err)
 				ctrlc <- syscall.SIGTERM
 				if !opts.Remove {
 					cancel()
@@ -484,7 +468,7 @@ func runRun(opts *runOptions, args ...string) error {
 					}
 
 				case err := <-errs:
-					plog.Errorf("received event error: %v", err)
+					log.G(ctx).Errorf("received event error: %v", err)
 					return
 				}
 			}

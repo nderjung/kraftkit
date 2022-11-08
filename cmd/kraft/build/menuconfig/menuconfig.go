@@ -41,7 +41,6 @@ import (
 	"kraftkit.sh/internal/cmdfactory"
 	"kraftkit.sh/internal/cmdutil"
 	"kraftkit.sh/iostreams"
-	"kraftkit.sh/log"
 	"kraftkit.sh/make"
 	"kraftkit.sh/packmanager"
 	"kraftkit.sh/schema"
@@ -49,14 +48,12 @@ import (
 
 type MenuConfigOptions struct {
 	PackageManager func(opts ...packmanager.PackageManagerOption) (packmanager.PackageManager, error)
-	Logger         func() (log.Logger, error)
 	IO             *iostreams.IOStreams
 }
 
 func MenuConfigCmd(f *cmdfactory.Factory) *cobra.Command {
 	opts := &MenuConfigOptions{
 		PackageManager: f.PackageManager,
-		Logger:         f.Logger,
 		IO:             f.IOStreams,
 	}
 
@@ -102,15 +99,9 @@ func menuConfigRun(mcopts *MenuConfigOptions, workdir string) error {
 		return err
 	}
 
-	plog, err := mcopts.Logger()
-	if err != nil {
-		return err
-	}
-
 	// Initialize at least the configuration options for a project
 	projectOpts, err := schema.NewProjectOptions(
 		nil,
-		schema.WithLogger(plog),
 		schema.WithWorkingDirectory(workdir),
 		schema.WithDefaultConfigPath(),
 		schema.WithPackageManager(&pm),
@@ -128,6 +119,7 @@ func menuConfigRun(mcopts *MenuConfigOptions, workdir string) error {
 	}
 
 	return project.Make(
+		ctx,
 		make.WithExecOptions(
 			exec.WithStdin(mcopts.IO.In),
 			exec.WithStdout(mcopts.IO.Out),

@@ -35,8 +35,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-
-	"kraftkit.sh/log"
 )
 
 type ExecOptions struct {
@@ -47,7 +45,6 @@ type ExecOptions struct {
 	stdoutcbs []io.Writer
 	stdin     io.Reader
 	env       []string
-	log       log.Logger
 	callbacks []func(int)
 	detach    bool
 }
@@ -148,13 +145,6 @@ func WithStderrCallback(stderrcb io.Writer) ExecOption {
 
 		eo.stderrcbs = append(eo.stderrcbs, stderrcb)
 
-		return nil
-	}
-}
-
-func WithLogger(l log.Logger) ExecOption {
-	return func(eo *ExecOptions) error {
-		eo.log = l
 		return nil
 	}
 }

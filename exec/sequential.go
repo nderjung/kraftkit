@@ -31,6 +31,8 @@
 
 package exec
 
+import "context"
+
 type SequentialProcesses struct {
 	sequence []*Process
 }
@@ -47,9 +49,9 @@ func NewSequential(sequence ...*Process) (*SequentialProcesses, error) {
 
 // StartAndWait sequentially starts the list of processes and waits for it to
 // complete before starting the next.
-func (sq *SequentialProcesses) StartAndWait() error {
+func (sq *SequentialProcesses) StartAndWait(ctx context.Context) error {
 	for _, process := range sq.sequence {
-		if err := process.StartAndWait(); err != nil {
+		if err := process.StartAndWait(ctx); err != nil {
 			return err
 		}
 	}

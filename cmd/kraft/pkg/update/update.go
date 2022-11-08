@@ -47,7 +47,6 @@ import (
 type UpdateOptions struct {
 	PackageManager func(opts ...packmanager.PackageManagerOption) (packmanager.PackageManager, error)
 	ConfigManager  func() (*config.ConfigManager, error)
-	Logger         func() (log.Logger, error)
 
 	// Command-line arguments
 	Manager string
@@ -57,7 +56,6 @@ func UpdateCmd(f *cmdfactory.Factory) *cobra.Command {
 	opts := &UpdateOptions{
 		PackageManager: f.PackageManager,
 		ConfigManager:  f.ConfigManager,
-		Logger:         f.Logger,
 	}
 
 	cmd, err := cmdutil.NewCmd(f, "update")
@@ -90,11 +88,6 @@ func UpdateCmd(f *cmdfactory.Factory) *cobra.Command {
 }
 
 func updateRun(opts *UpdateOptions) error {
-	plog, err := opts.Logger()
-	if err != nil {
-		return err
-	}
-
 	cfgm, err := opts.ConfigManager()
 	if err != nil {
 		return err
@@ -124,20 +117,13 @@ func updateRun(opts *UpdateOptions) error {
 			// processtree.WithVerb("Updating"),
 			processtree.IsParallel(parallel),
 			processtree.WithRenderer(norender),
-			processtree.WithLogger(plog),
 		},
 		[]*processtree.ProcessTreeItem{
 			processtree.NewProcessTreeItem(
 				"Updating...",
 				"",
-				func(l log.Logger) error {
-					// Apply the incoming logger which is tailored to display as a
-					// sub-terminal within the fancy processtree.
-					pm.ApplyOptions(
-						packmanager.WithLogger(l),
-					)
-
-					return pm.Update()
+				func(ctx context.Context) error {
+					return pm.Update(ctx)
 				},
 			),
 		}...,

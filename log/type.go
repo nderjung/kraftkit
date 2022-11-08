@@ -28,39 +28,49 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
-// SOFTWARE.
 
 package log
 
-import "io"
+import "strings"
 
-const Format = "2006-01-02 15:04:05"
+// LoggerType controls how log statements are output
+type LoggerType uint
 
-type Logger interface {
-	Trace(a ...interface{})
-	Tracef(format string, a ...interface{})
-	Debug(a ...interface{})
-	Debugf(format string, a ...interface{})
-	Info(a ...interface{})
-	Infof(format string, a ...interface{})
-	Warn(a ...interface{})
-	Warnf(format string, a ...interface{})
-	Warning(a ...interface{})
-	Warningf(format string, a ...interface{})
-	Error(a ...interface{})
-	Errorf(format string, a ...interface{})
-	Fatal(a ...interface{})
-	Fatalf(format string, a ...interface{})
-	SetOutput(w io.Writer)
+// Logger types
+const (
+	QUIET LoggerType = iota
+	BASIC
+	FANCY
+	JSON
+)
 
-	// Clone provides a semantic copy of the current instance of the Logger such
-	// that it can be used independently but with the same configuration.  This
-	// may useful for sub-processes.
-	Clone() Logger
+func LoggerTypeFromString(name string) LoggerType {
+	name = strings.ToLower(name)
+	switch name {
+	case "quiet":
+		return QUIET
+	case "basic":
+		return BASIC
+	case "fancy":
+		return FANCY
+	case "json":
+		return JSON
+	default:
+		return BASIC
+	}
+}
 
-	// Output returns the io.Writer used in the Logger's underlying implementation
-	Output() io.Writer
-
-	// Level returns the current log level
-	Level() string
+func LoggerTypeToString(t LoggerType) string {
+	switch t {
+	case QUIET:
+		return "quiet"
+	case BASIC:
+		return "basic"
+	case FANCY:
+		return "fancy"
+	case JSON:
+		return "json"
+	default:
+		return "basic"
+	}
 }

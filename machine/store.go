@@ -33,6 +33,7 @@ package machine
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"fmt"
 	"path/filepath"
@@ -40,14 +41,17 @@ import (
 
 	"kraftkit.sh/config"
 	"kraftkit.sh/internal/retrytimeout"
+	"kraftkit.sh/log"
 
 	"github.com/dgraph-io/badger/v3"
+	"github.com/sirupsen/logrus"
 )
 
 type MachineStore struct {
 	db      *badger.DB
 	bopts   badger.Options
 	timeout time.Duration
+	ctx     context.Context
 }
 
 type MachineStoreOption func(ms *MachineStore) error
@@ -149,6 +153,10 @@ func (ms *MachineStore) SaveMachineConfig(mid MachineID, mcfg MachineConfig) err
 
 	defer ms.close()
 
+	log.G(ms.ctx).WithFields(logrus.Fields{
+		"mid": mid.ShortString(),
+	}).Debugf("saving machine config")
+
 	b := bytes.Buffer{}
 	e := gob.NewEncoder(&b)
 	if err := e.Encode(mcfg); err != nil {
@@ -171,6 +179,10 @@ func (ms *MachineStore) LookupMachineConfig(mid MachineID, mcfg any) error {
 	}
 
 	defer ms.close()
+
+	log.G(ms.ctx).WithFields(logrus.Fields{
+		"mid": mid.ShortString(),
+	}).Debugf("retrieving machine config")
 
 	if err := ms.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(keyMachineConfig(mid))
@@ -203,6 +215,10 @@ func (ms *MachineStore) SaveMachineState(mid MachineID, state MachineState) erro
 
 	defer ms.close()
 
+	log.G(ms.ctx).WithFields(logrus.Fields{
+		"mid": mid.ShortString(),
+	}).Debugf("saving machine state")
+
 	txn := ms.db.NewTransaction(true)
 	if err := txn.SetEntry(badger.NewEntry(keyMachineState(mid), []byte(state.String()))); err != nil {
 		return fmt.Errorf("could not save machine state to store for %s: %v", mid.ShortString(), err)
@@ -221,6 +237,10 @@ func (ms *MachineStore) LookupMachineState(mid MachineID) (MachineState, error) 
 	}
 
 	defer ms.close()
+
+	log.G(ms.ctx).WithFields(logrus.Fields{
+		"mid": mid.ShortString(),
+	}).Debugf("retrieving machine state")
 
 	if err := ms.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(keyMachineState(mid))
@@ -251,6 +271,10 @@ func (ms *MachineStore) SaveDriverConfig(mid MachineID, dcfg any) error {
 
 	defer ms.close()
 
+	log.G(ms.ctx).WithFields(logrus.Fields{
+		"mid": mid.ShortString(),
+	}).Debugf("saving driver config")
+
 	b := bytes.Buffer{}
 	if err := gob.NewEncoder(&b).Encode(dcfg); err != nil {
 		return fmt.Errorf("could not encode driver config for %s: %v", mid.ShortString(), err)
@@ -272,6 +296,10 @@ func (ms *MachineStore) LookupDriverConfig(mid MachineID, dcfg any) error {
 	}
 
 	defer ms.close()
+
+	log.G(ms.ctx).WithFields(logrus.Fields{
+		"mid": mid.ShortString(),
+	}).Debugf("retrieving driver config")
 
 	if err := ms.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(keyDriverConfig(mid))
@@ -303,6 +331,10 @@ func (ms *MachineStore) Purge(mid MachineID) error {
 	}
 
 	defer ms.close()
+
+	log.G(ms.ctx).WithFields(logrus.Fields{
+		"mid": mid.ShortString(),
+	}).Debugf("purging")
 
 	txn := ms.db.NewTransaction(true)
 

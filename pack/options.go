@@ -37,7 +37,6 @@ import (
 	"os"
 
 	"kraftkit.sh/initrd"
-	"kraftkit.sh/log"
 	"kraftkit.sh/unikraft"
 	"kraftkit.sh/utils"
 )
@@ -76,9 +75,6 @@ type PackageOptions struct {
 
 	// Sha256
 	Sha256 string
-
-	// Access to a logger
-	log log.Logger
 
 	// workdir
 	workdir string
@@ -249,10 +245,6 @@ func WithWorkdir(dir string) PackageOption {
 	}
 }
 
-func (opts *PackageOptions) Log() log.Logger {
-	return opts.log
-}
-
 func (opts *PackageOptions) Workdir() string {
 	return opts.workdir
 }
@@ -263,7 +255,6 @@ type PullPackageOptions struct {
 	calculateChecksum bool
 	onProgress        func(progress float64)
 	workdir           string
-	log               log.Logger
 	useCache          bool
 }
 
@@ -284,11 +275,6 @@ func (ppo *PullPackageOptions) Workdir() string {
 // the resource sum.
 func (ppo *PullPackageOptions) CalculateChecksum() bool {
 	return ppo.calculateChecksum
-}
-
-// Log returns the available logger
-func (ppo *PullPackageOptions) Log() log.Logger {
-	return ppo.log
 }
 
 // UseCache returns whether the pull should redirect to using a local cache if
@@ -365,14 +351,6 @@ func WithPullProgressFunc(onProgress func(progress float64)) PullPackageOption {
 func WithPullWorkdir(workdir string) PullPackageOption {
 	return func(opts *PullPackageOptions) error {
 		opts.workdir = workdir
-		return nil
-	}
-}
-
-// WithPullLogger set the use of a logger
-func WithPullLogger(l log.Logger) PullPackageOption {
-	return func(opts *PullPackageOptions) error {
-		opts.log = l
 		return nil
 	}
 }

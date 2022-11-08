@@ -56,7 +56,6 @@ import (
 type PullOptions struct {
 	PackageManager func(opts ...packmanager.PackageManagerOption) (packmanager.PackageManager, error)
 	ConfigManager  func() (*config.ConfigManager, error)
-	Logger         func() (log.Logger, error)
 	IO             *iostreams.IOStreams
 
 	// Command-line arguments
@@ -75,8 +74,7 @@ type PullOptions struct {
 func PullCmd(f *cmdfactory.Factory) *cobra.Command {
 	opts := &PullOptions{
 		PackageManager: f.PackageManager,
-		ConfigManager:  f.ConfigManager,
-		Logger:         f.Logger,
+		ConfigManager:  f.ConfigManager,s
 		IO:             f.IOStreams,
 	}
 
@@ -211,11 +209,6 @@ func pullRun(opts *PullOptions, query string) error {
 		return err
 	}
 
-	plog, err := opts.Logger()
-	if err != nil {
-		return err
-	}
-
 	// Force a particular package manager
 	if len(opts.Manager) > 0 && opts.Manager != "auto" {
 		pm, err = pm.From(opts.Manager)
@@ -230,7 +223,6 @@ func pullRun(opts *PullOptions, query string) error {
 		workdir = query
 		projectOpts, err := schema.NewProjectOptions(
 			nil,
-			schema.WithLogger(plog),
 			schema.WithWorkingDirectory(workdir),
 			schema.WithDefaultConfigPath(),
 			schema.WithResolvedPaths(true),
@@ -286,7 +278,7 @@ func pullRun(opts *PullOptions, query string) error {
 		}
 
 		if len(next) == 0 {
-			plog.Warnf("could not find %s", c.String())
+			log.G(ctx).Warnf("could not find %s", c.String())
 			continue
 		}
 
@@ -294,17 +286,11 @@ func pullRun(opts *PullOptions, query string) error {
 			p := p
 			processes = append(processes, paraprogress.NewProcess(
 				fmt.Sprintf("pulling %s", p.Options().TypeNameVersion()),
-				func(l log.Logger, w func(progress float64)) error {
-					// Apply the incoming logger which is tailored to display as a
-					// sub-terminal within the fancy processtree.
-					p.ApplyOptions(
-						pack.WithLogger(l),
-					)
-
+				func(ctx context.Context, w func(progress float64)) error {
 					return p.Pull(
+						ctx,
 						pack.WithPullProgressFunc(w),
 						pack.WithPullWorkdir(workdir),
-						pack.WithPullLogger(l),
 						pack.WithPullChecksum(!opts.NoChecksum),
 						pack.WithPullCache(!opts.NoCache),
 					)
@@ -316,7 +302,6 @@ func pullRun(opts *PullOptions, query string) error {
 	model, err := paraprogress.NewParaProgress(
 		processes,
 		paraprogress.IsParallel(true),
-		paraprogress.WithLogger(plog),
 	)
 	if err != nil {
 		return err

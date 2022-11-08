@@ -32,6 +32,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -39,11 +40,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sirupsen/logrus"
 	"github.com/xlab/treeprint"
 
 	"kraftkit.sh/exec"
 	"kraftkit.sh/iostreams"
 	"kraftkit.sh/kconfig"
+	"kraftkit.sh/log"
 	"kraftkit.sh/make"
 	"kraftkit.sh/unikraft"
 	"kraftkit.sh/unikraft/component"
@@ -169,7 +172,7 @@ func (a *ApplicationConfig) MakeArgs() (*core.MakeArgs, error) {
 // options based on the `make` package.  Ultimately, this is an abstract method
 // which will be used by a number of well-known make command goals by Unikraft's
 // build system.
-func (a *ApplicationConfig) Make(mopts ...make.MakeOption) error {
+func (a *ApplicationConfig) Make(ctx context.Context, mopts ...make.MakeOption) error {
 	coreSrc, err := a.Unikraft.SourceDir()
 	if err != nil {
 		return err
@@ -202,8 +205,8 @@ func (a *ApplicationConfig) Make(mopts ...make.MakeOption) error {
 }
 
 // SyncConfig updates the configuration
-func (a *ApplicationConfig) SyncConfig(mopts ...make.MakeOption) error {
-	return a.Make(append(mopts,
+func (a *ApplicationConfig) SyncConfig(ctx context.Context, mopts ...make.MakeOption) error {
+	return a.Make(ctx, append(mopts,
 		make.WithExecOptions(
 			exec.WithStdout(a.Log().Output()),
 		),
@@ -212,7 +215,7 @@ func (a *ApplicationConfig) SyncConfig(mopts ...make.MakeOption) error {
 }
 
 // Defconfig updates the configuration
-func (ac *ApplicationConfig) DefConfig(tc *target.TargetConfig, extra *kconfig.KConfigValues, mopts ...make.MakeOption) error {
+func (ac *ApplicationConfig) DefConfig(ctx context.Context, tc *target.TargetConfig, extra *kconfig.KConfigValues, mopts ...make.MakeOption) error {
 	appk, err := ac.KConfigValues()
 	if err != nil {
 		return fmt.Errorf("could not read application KConfig values: %v", err)
@@ -247,66 +250,108 @@ func (ac *ApplicationConfig) DefConfig(tc *target.TargetConfig, extra *kconfig.K
 	tmpfile.Write([]byte(values.String()))
 	tmpfile.Sync()
 
-	return ac.Make(append(mopts,
-		make.WithExecOptions(
-			exec.WithStdout(ac.Log().Output()),
-		),
-		make.WithTarget("defconfig"),
-		make.WithVar("UK_DEFCONFIG", tmpfile.Name()),
-	)...)
+	// if log.G(ctx).Level > X {
+
+	// }
+
+	return ac.Make(
+		ctx,
+		append(mopts,
+			make.WithExecOptions(
+				exec.WithStdout(ac.Log().Output()),
+			),
+			make.WithTarget("defconfig"),
+			make.WithVar("UK_DEFCONFIG", tmpfile.Name()),
+		)...,
+	)
 }
 
 // Configure the application
-func (a *ApplicationConfig) Configure(mopts ...make.MakeOption) error {
-	return a.Make(append(mopts,
-		make.WithExecOptions(
-			exec.WithStdout(a.Log().Output()),
-		),
-		make.WithTarget("configure"),
-	)...)
+func (a *ApplicationConfig) Configure(ctx context.Context, mopts ...make.MakeOption) error {
+	log.G(ctx).WithFields(logrus.Fields{
+		"name": a.Name(),
+	}).Trace("configuring...")
+
+	return a.Make(
+		ctx,
+		append(mopts,
+			make.WithExecOptions(
+				exec.WithStdout(a.Log().Output()),
+			),
+			make.WithTarget("configure"),
+		)...,
+	)
 }
 
 // Prepare the application
-func (a *ApplicationConfig) Prepare(mopts ...make.MakeOption) error {
-	return a.Make(append(mopts,
-		make.WithExecOptions(
-			exec.WithStdout(a.Log().Output()),
-		),
-		make.WithTarget("prepare"),
-	)...)
+func (a *ApplicationConfig) Prepare(ctx context.Context, mopts ...make.MakeOption) error {
+	log.G(ctx).WithFields(logrus.Fields{
+		"name": a.Name(),
+	}).Trace("preparing...")
+
+	return a.Make(
+		ctx,
+		append(mopts,
+			make.WithExecOptions(
+				exec.WithStdout(a.Log().Output()),
+			),
+			make.WithTarget("prepare"),
+		)...,
+	)
 }
 
 // Clean the application
-func (a *ApplicationConfig) Clean(mopts ...make.MakeOption) error {
-	return a.Make(append(mopts,
-		make.WithExecOptions(
-			exec.WithStdout(a.Log().Output()),
-		),
-		make.WithTarget("clean"),
-	)...)
+func (a *ApplicationConfig) Clean(ctx context.Context, mopts ...make.MakeOption) error {
+	log.G(ctx).WithFields(logrus.Fields{
+		"name": a.Name(),
+	}).Trace("cleaning...")
+
+	return a.Make(
+		ctx,
+		append(mopts,
+			make.WithExecOptions(
+				exec.WithStdout(a.Log().Output()),
+			),
+			make.WithTarget("clean"),
+		)...,
+	)
 }
 
 // Delete the build folder of the application
-func (a *ApplicationConfig) Properclean(mopts ...make.MakeOption) error {
-	return a.Make(append(mopts,
-		make.WithExecOptions(
-			exec.WithStdout(a.Log().Output()),
-		),
-		make.WithTarget("properclean"),
-	)...)
+func (a *ApplicationConfig) Properclean(ctx context.Context, mopts ...make.MakeOption) error {
+	log.G(ctx).WithFields(logrus.Fields{
+		"name": a.Name(),
+	}).Trace("propercleaning...")
+
+	return a.Make(
+		ctx,
+		append(mopts,
+			make.WithExecOptions(
+				exec.WithStdout(a.Log().Output()),
+			),
+			make.WithTarget("properclean"),
+		)...,
+	)
 }
 
 // Fetch component sources for the applications
-func (a *ApplicationConfig) Fetch(mopts ...make.MakeOption) error {
-	return a.Make(append(mopts,
-		make.WithExecOptions(
-			exec.WithStdout(a.Log().Output()),
-		),
-		make.WithTarget("fetch"),
-	)...)
+func (a *ApplicationConfig) Fetch(ctx context.Context, mopts ...make.MakeOption) error {
+	log.G(ctx).WithFields(logrus.Fields{
+		"name": a.Name(),
+	}).Trace("fetching...")
+
+	return a.Make(
+		ctx,
+		append(mopts,
+			make.WithExecOptions(
+				exec.WithStdout(a.Log().Output()),
+			),
+			make.WithTarget("fetch"),
+		)...,
+	)
 }
 
-func (a *ApplicationConfig) Set(mopts ...make.MakeOption) error {
+func (a *ApplicationConfig) Set(ctx context.Context, mopts ...make.MakeOption) error {
 	// Write the configuration to a temporary file
 	// tmpfile, err := ioutil.TempFile("", a.Name()+"-config*")
 	// if err != nil {
@@ -331,7 +376,7 @@ func (a *ApplicationConfig) Set(mopts ...make.MakeOption) error {
 	return nil
 }
 
-func (a *ApplicationConfig) Unset(mopts ...make.MakeOption) error {
+func (a *ApplicationConfig) Unset(ctx context.Context, mopts ...make.MakeOption) error {
 	// // Write the configuration to a temporary file
 	// tmpfile, err := ioutil.TempFile("", a.Name()+"-config*")
 	// if err != nil {
@@ -358,7 +403,11 @@ func (a *ApplicationConfig) Unset(mopts ...make.MakeOption) error {
 
 // Build offers an invocation of the Unikraft build system with the contextual
 // information of the ApplicationConfigs
-func (a *ApplicationConfig) Build(opts ...BuildOption) error {
+func (a *ApplicationConfig) Build(ctx context.Context, opts ...BuildOption) error {
+	log.G(ctx).WithFields(logrus.Fields{
+		"name": a.Name(),
+	}).Trace("building...")
+
 	bopts := &BuildOptions{}
 	for _, o := range opts {
 		err := o(bopts)
@@ -392,7 +441,7 @@ func (a *ApplicationConfig) Build(opts ...BuildOption) error {
 		}
 	}
 
-	return a.Make(bopts.mopts...)
+	return a.Make(ctx, bopts.mopts...)
 }
 
 // LibraryNames return names for all libraries in this Compose config

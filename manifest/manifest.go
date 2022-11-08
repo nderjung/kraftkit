@@ -82,10 +82,6 @@ type Manifest struct {
 	// Manifest to access information a bout itself aswell as downloading a given
 	// resource
 	auths map[string]config.AuthConfig
-
-	// log is an internal property used to perform logging within the context of
-	// the manfiest
-	log log.Logger
 }
 
 type ManifestProvider struct {

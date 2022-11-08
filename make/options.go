@@ -32,11 +32,9 @@
 package make
 
 import (
-	"context"
 	"fmt"
 
 	"kraftkit.sh/exec"
-	"kraftkit.sh/log"
 )
 
 // MakeOptions represents all the command-line arguments which can be passed to
@@ -72,9 +70,7 @@ type MakeOptions struct {
 	targets    []string
 	vars       map[string]string
 	onProgress func(float64)
-	log        log.Logger
 	eopts      []exec.ExecOption
-	ctx        context.Context
 }
 
 type MakeOption func(mo *MakeOptions) error
@@ -439,29 +435,10 @@ func WithExecOptions(eopts ...exec.ExecOption) MakeOption {
 	}
 }
 
-// WithContext sets the desired context
-func WithContext(ctx context.Context) MakeOption {
-	return func(mo *MakeOptions) error {
-		mo.ctx = ctx
-		return nil
-	}
-}
-
 // WithBinPath sets an alternative path to the GNU Make binary executable
 func WithBinPath(path string) MakeOption {
 	return func(mo *MakeOptions) error {
 		mo.bin = path
-		return nil
-	}
-}
-
-// WithLogger provides access to a logger to be used within the package
-func WithLogger(l log.Logger) MakeOption {
-	return func(mo *MakeOptions) error {
-		mo.log = l
-		mo.eopts = append(mo.eopts,
-			exec.WithLogger(l),
-		)
 		return nil
 	}
 }

@@ -32,6 +32,7 @@
 package make
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -196,6 +197,6 @@ func NewFromInterface(args interface{}, mopts ...MakeOption) (*Make, error) {
 }
 
 // Execute starts and waits on the prepared make invocation
-func (m *Make) Execute() error {
-	return m.seq.StartAndWait()
+func (m *Make) Execute(ctx context.Context) error {
+	return m.seq.StartAndWait(ctx)
 }

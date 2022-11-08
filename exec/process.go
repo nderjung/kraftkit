@@ -32,12 +32,15 @@
 package exec
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
+
+	"kraftkit.sh/log"
 )
 
 type Process struct {
@@ -91,16 +94,12 @@ func (e *Process) Cmdline() string {
 }
 
 // Start the process
-func (e *Process) Start() error {
-	if e.opts.ctx != nil {
-		e.cmd = exec.CommandContext(
-			e.opts.ctx,
-			e.executable.bin,
-			e.executable.Args()...,
-		)
-	} else {
-		e.cmd = exec.Command(e.executable.bin, e.executable.Args()...)
-	}
+func (e *Process) Start(ctx context.Context) error {
+	e.cmd = exec.CommandContext(
+		ctx,
+		e.executable.bin,
+		e.executable.Args()...,
+	)
 
 	// Set the stdout
 	if e.opts.stdout != nil && len(e.opts.stdoutcbs) == 0 {
@@ -138,9 +137,7 @@ func (e *Process) Start() error {
 	// Add any set environmental variables including the host's
 	e.cmd.Env = append(os.Environ(), e.opts.env...)
 
-	if e.opts.log != nil {
-		e.opts.log.Debug(e.Cmdline())
-	}
+	log.G(ctx).Debug(e.Cmdline())
 
 	if e.opts.detach {
 		// the Setpgid flag is used to prevent the child process from exiting when
@@ -180,8 +177,8 @@ func (e *Process) Wait() error {
 }
 
 // StartAndWait starts the process and waits for it to exit
-func (e *Process) StartAndWait() error {
-	if err := e.Start(); err != nil {
+func (e *Process) StartAndWait(ctx context.Context) error {
+	if err := e.Start(ctx); err != nil {
 		return err
 	}
 

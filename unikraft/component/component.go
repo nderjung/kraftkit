@@ -58,7 +58,6 @@ type ComponentConfig struct {
 
 	workdir string
 	pm      *packmanager.PackageManager
-	log     log.Logger
 	ctype   unikraft.ComponentType // embed the component type within the config
 
 	// Context should contain all implementation-specific options, using
@@ -167,10 +166,6 @@ func (cc *ComponentConfig) ApplyOptions(opts ...ComponentOption) error {
 	}
 
 	return nil
-}
-
-func (cc *ComponentConfig) Log() log.Logger {
-	return cc.log
 }
 
 // Workdir exposes the instantiated component's working directory

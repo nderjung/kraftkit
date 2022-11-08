@@ -34,6 +34,7 @@ package plugins
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
@@ -57,16 +58,14 @@ type PluginManager struct {
 	findSh     func() (string, error)
 	newCommand func(string, ...string) *exec.Cmd
 	platform   func() (string, string)
-	log        log.Logger
 }
 
-func NewPluginManager(dataDir string, l log.Logger) *PluginManager {
+func NewPluginManager(dataDir string) *PluginManager {
 	return &PluginManager{
 		dataDir:    dataDir,
 		lookPath:   safeexec.LookPath,
 		findSh:     findsh.Find,
 		newCommand: exec.Command,
-		log:        l,
 		platform: func() (string, string) {
 			ext := ".so"
 
@@ -232,18 +231,18 @@ func (pm *PluginManager) InstallLocal(repo string) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (pm *PluginManager) Dispatch() error {
+func (pm *PluginManager) Dispatch(ctx context.Context) error {
 	plugins, err := pm.List()
 	if err != nil {
 		return err
 	}
 
 	for _, plugin := range plugins {
-		pm.log.Tracef("dispatching plugin: %s", plugin.Path())
+		log.G(ctx).Tracef("dispatching plugin: %s", plugin.Path())
 
 		_, err := goplugin.Open(plugin.Path())
 		if err != nil {
-			pm.log.Error("could not open plugin: %s", err)
+			log.G(ctx).Error("could not open plugin: %s", err)
 		}
 	}
 
