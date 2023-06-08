@@ -33,6 +33,7 @@ func Test_ttyTablePrinter_truncate(t *testing.T) {
 	tp := &ttyTablePrinter{
 		out:      &buf,
 		maxWidth: 5,
+		format:   "table",
 	}
 
 	tp.AddField("1", nil, nil)

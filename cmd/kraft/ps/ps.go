@@ -24,8 +24,9 @@ type Ps struct {
 	Architecture string `long:"arch" short:"m" usage:"Filter the list by architecture"`
 	Long         bool   `long:"long" short:"l" usage:"Show more information"`
 	platform     string
-	Quiet        bool `long:"quiet" short:"q" usage:"Only display machine IDs"`
-	ShowAll      bool `long:"all" short:"a" usage:"Show all machines (default shows just running)"`
+	Quiet        bool   `long:"quiet" short:"q" usage:"Only display machine IDs"`
+	ShowAll      bool   `long:"all" short:"a" usage:"Show all machines (default shows just running)"`
+	Output       string `long:"output" short:"o" usage:"Set output format" default:"table"`
 }
 
 func New() *cobra.Command {
@@ -132,7 +133,12 @@ func (opts *Ps) Run(cmd *cobra.Command, args []string) error {
 	defer iostreams.G(ctx).StopPager()
 
 	cs := iostreams.G(ctx).ColorScheme()
-	table := tableprinter.NewTablePrinter(ctx)
+	var table tableprinter.TablePrinter
+
+	table, err = tableprinter.NewTablePrinter(ctx, opts.Output)
+	if err != nil {
+		return err
+	}
 
 	// Header row
 	if opts.Long {

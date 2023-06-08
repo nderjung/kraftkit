@@ -23,14 +23,15 @@ import (
 )
 
 type List struct {
-	Limit     int  `long:"limit" short:"l" usage:"Set the maximum number of results" default:"50"`
-	NoLimit   bool `long:"no-limit" usage:"Do not limit the number of items to print"`
-	ShowApps  bool `long:"apps" short:"" usage:"Show applications"`
-	ShowArchs bool `long:"archs" short:"M" usage:"Show architectures"`
-	ShowCore  bool `long:"core" short:"C" usage:"Show Unikraft core versions"`
-	ShowLibs  bool `long:"libs" short:"L" usage:"Show libraries"`
-	ShowPlats bool `long:"plats" short:"P" usage:"Show platforms"`
-	Update    bool `long:"update" short:"u" usage:"Get latest information about components before listing results"`
+	Limit     int    `long:"limit" short:"l" usage:"Set the maximum number of results" default:"50"`
+	NoLimit   bool   `long:"no-limit" usage:"Do not limit the number of items to print"`
+	ShowApps  bool   `long:"apps" short:"" usage:"Show applications"`
+	ShowArchs bool   `long:"archs" short:"M" usage:"Show architectures"`
+	ShowCore  bool   `long:"core" short:"C" usage:"Show Unikraft core versions"`
+	ShowLibs  bool   `long:"libs" short:"L" usage:"Show libraries"`
+	ShowPlats bool   `long:"plats" short:"P" usage:"Show platforms"`
+	Update    bool   `long:"update" short:"u" usage:"Get latest information about components before listing results"`
+	Output    string `long:"output" short:"o" usage:"Set output format" default:"table"`
 }
 
 func New() *cobra.Command {
@@ -145,9 +146,13 @@ func (opts *List) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	defer iostreams.G(ctx).StopPager()
+	var table tableprinter.TablePrinter
 
 	cs := iostreams.G(ctx).ColorScheme()
-	table := tableprinter.NewTablePrinter(ctx)
+	table, err = tableprinter.NewTablePrinter(ctx, opts.Output)
+	if err != nil {
+		return err
+	}
 
 	// Header row
 	table.AddField("TYPE", nil, cs.Bold)

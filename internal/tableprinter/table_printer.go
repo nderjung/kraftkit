@@ -25,11 +25,13 @@ package tableprinter
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
 
+	"gopkg.in/yaml.v2"
 	"kraftkit.sh/internal/text"
 	"kraftkit.sh/iostreams"
 )
@@ -42,27 +44,41 @@ type TablePrinter interface {
 }
 
 type TablePrinterOptions struct {
-	IsTTY bool
+	IsTTY  bool
+	format TableOutputFormat
 }
 
-func NewTablePrinter(ctx context.Context) TablePrinter {
+func NewTablePrinter(ctx context.Context, format string) (TablePrinter, error) {
+	var topts []tablePrinterOption
 	io := iostreams.G(ctx)
-	return NewTablePrinterWithOptions(ctx, TablePrinterOptions{
-		IsTTY: io.IsStdoutTTY(),
-	})
-}
+	opts := &TablePrinterOptions{}
 
-func NewTablePrinterWithOptions(ctx context.Context, opts TablePrinterOptions) TablePrinter {
-	io := iostreams.G(ctx)
-	if opts.IsTTY {
+	switch strings.ToLower(format) {
+	case "json":
+		topts = append(topts, WithOutputFormat(OutputFormatJSON))
+	case "yaml":
+		topts = append(topts, WithOutputFormat(OutputFormatYAML))
+	case "table":
+		topts = append(topts, WithOutputFormat(OutputFormatTable))
+	default:
+		return nil, fmt.Errorf("Output format %s is Invalid", format)
+	}
+	WithIsTTY(io.IsStdoutTTY())(opts)
+	for _, tpo := range topts {
+		tpo(opts)
+	}
+
+	// In case output format is set to JSON or something else except `default` then uses `ttyTablePrinter` by default to print output.
+	if opts.IsTTY || opts.format != OutputFormatTable {
 		return &ttyTablePrinter{
 			out:      io.Out,
 			maxWidth: io.TerminalWidth(),
-		}
+			format:   opts.format,
+		}, nil
 	}
 	return &tsvTablePrinter{
 		out: io.Out,
-	}
+	}, nil
 }
 
 type tableField struct {
@@ -79,6 +95,7 @@ type ttyTablePrinter struct {
 	out      io.Writer
 	maxWidth int
 	rows     [][]tableField
+	format   TableOutputFormat
 }
 
 func (t ttyTablePrinter) IsTTY() bool {
@@ -114,36 +131,80 @@ func (t *ttyTablePrinter) Render() error {
 	numCols := len(t.rows[0])
 	colWidths := t.calculateColumnWidths(len(delim))
 
-	for _, row := range t.rows {
-		for col, field := range row {
-			if col > 0 {
-				_, err := fmt.Fprint(t.out, delim)
+	if t.format != OutputFormatTable {
+		var printStr string
+		var byteData []byte
+		var err error
+		headerRow := t.rows[0]
+		var listOfObjs []map[string]string
+
+		for i, row := range t.rows {
+			if i == 0 {
+				continue
+			}
+			m := make(map[string]string)
+
+			for j, column := range row {
+				m[strings.ToLower(headerRow[j].Text)] = column.Text
+			}
+
+			if len(m) > 0 {
+				listOfObjs = append(listOfObjs, m)
+			}
+		}
+
+		switch t.format {
+		case OutputFormatJSON:
+			byteData, err = json.Marshal(listOfObjs)
+		case OutputFormatYAML:
+			byteData, err = yaml.Marshal(listOfObjs)
+		default:
+			return fmt.Errorf("Output format %s is Invalid", t.format)
+		}
+
+		if err != nil {
+			return err
+		}
+
+		printStr = string(byteData)
+		_, err = fmt.Fprint(t.out, printStr+"\n")
+
+		if err != nil {
+			return err
+		}
+	} else {
+		for _, row := range t.rows {
+			for col, field := range row {
+				if col > 0 {
+					_, err := fmt.Fprint(t.out, delim)
+					if err != nil {
+						return err
+					}
+				}
+				truncVal := field.TruncateFunc(colWidths[col], field.Text)
+				if col < numCols-1 {
+					// pad value with spaces on the right
+					if padWidth := colWidths[col] - field.DisplayWidth(); padWidth > 0 {
+						truncVal += strings.Repeat(" ", padWidth)
+					}
+				}
+				if field.ColorFunc != nil {
+					truncVal = field.ColorFunc(truncVal)
+				}
+				_, err := fmt.Fprint(t.out, truncVal)
 				if err != nil {
 					return err
 				}
 			}
-			truncVal := field.TruncateFunc(colWidths[col], field.Text)
-			if col < numCols-1 {
-				// pad value with spaces on the right
-				if padWidth := colWidths[col] - field.DisplayWidth(); padWidth > 0 {
-					truncVal += strings.Repeat(" ", padWidth)
+			if len(row) > 0 {
+				_, err := fmt.Fprint(t.out, "\n")
+				if err != nil {
+					return err
 				}
-			}
-			if field.ColorFunc != nil {
-				truncVal = field.ColorFunc(truncVal)
-			}
-			_, err := fmt.Fprint(t.out, truncVal)
-			if err != nil {
-				return err
-			}
-		}
-		if len(row) > 0 {
-			_, err := fmt.Fprint(t.out, "\n")
-			if err != nil {
-				return err
 			}
 		}
 	}
+
 	return nil
 }
 
