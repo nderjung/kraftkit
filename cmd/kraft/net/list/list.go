@@ -19,7 +19,8 @@ import (
 )
 
 type List struct {
-	Long   bool `long:"long" short:"l" usage:"Show more information"`
+	Long   bool   `long:"long" short:"l" usage:"Show more information"`
+	Output string `long:"output" short:"o" usage:"Set output format" default:"table"`
 	driver string
 }
 
@@ -97,8 +98,12 @@ func (opts *List) Run(cmd *cobra.Command, args []string) error {
 
 	defer iostreams.G(ctx).StopPager()
 
+	var table tableprinter.TablePrinter
 	cs := iostreams.G(ctx).ColorScheme()
-	table := tableprinter.NewTablePrinter(ctx)
+	table, err = tableprinter.NewTablePrinter(ctx, opts.Output)
+	if err != nil {
+		return err
+	}
 
 	// Header row
 	if opts.Long {
