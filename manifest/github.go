@@ -140,6 +140,10 @@ func (ghp GitHubProvider) PullManifest(ctx context.Context, manifest *Manifest, 
 	return nil
 }
 
+func (ghp GitHubProvider) DeleteManifest(ctx context.Context, packPath string) error {
+	return fmt.Errorf("DeleteManifest is not implemented for GitHubProvider")
+}
+
 func (ghp GitHubProvider) String() string {
 	return "github"
 }

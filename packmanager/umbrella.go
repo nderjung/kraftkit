@@ -7,9 +7,11 @@ package packmanager
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/sirupsen/logrus"
 
+	"kraftkit.sh/config"
 	"kraftkit.sh/log"
 	"kraftkit.sh/pack"
 	"kraftkit.sh/unikraft/component"
@@ -117,6 +119,42 @@ func (u umbrella) AddSource(ctx context.Context, source string) error {
 		err := manager.AddSource(ctx, source)
 		if err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func (u umbrella) Prune(ctx context.Context, qopts ...QueryOption) error {
+	var query Query
+	sourcesDir := config.G[config.KraftKit](ctx).Paths.Sources
+	for _, qopt := range qopts {
+		qopt(&query)
+	}
+
+	if query.all {
+		err := os.RemoveAll(sourcesDir)
+		if err != nil {
+			return err
+		}
+	} else {
+		packages, err := u.Catalog(ctx, WithCache(true))
+		if err != nil {
+			return err
+		}
+
+		isPkgExist := false
+		for _, pack := range packages {
+			if query.name == pack.Name() {
+				isPkgExist = true
+				err = pack.Delete(ctx, query.version)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		if !isPkgExist {
+			return fmt.Errorf("Wrong package name is specified")
 		}
 	}
 
