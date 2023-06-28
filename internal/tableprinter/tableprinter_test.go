@@ -28,22 +28,21 @@ import (
 	"testing"
 )
 
-func Test_ttyTablePrinter_truncate(t *testing.T) {
+func Test_TablePrinter_OutputFormatTable(t *testing.T) {
 	buf := bytes.Buffer{}
-	tp := &ttyTablePrinter{
-		out:      &buf,
+	tp := &TablePrinter{
 		maxWidth: 5,
-		format:   "table",
+		format:   OutputFormatTable,
 	}
 
-	tp.AddField("1", nil, nil)
-	tp.AddField("hello", nil, nil)
+	tp.AddField("1", nil)
+	tp.AddField("hello", nil)
 	tp.EndRow()
-	tp.AddField("2", nil, nil)
-	tp.AddField("world", nil, nil)
+	tp.AddField("2", nil)
+	tp.AddField("world", nil)
 	tp.EndRow()
 
-	err := tp.Render()
+	err := tp.Render(&buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
