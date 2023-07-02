@@ -39,6 +39,19 @@ func WithDetectHandler() OCIManagerOption {
 			return nil
 		}
 
+		if ociPath := config.G[config.KraftKit](ctx).OciPath; len(ociPath) > 0 {
+
+			log.G(ctx).WithFields(logrus.Fields{
+				"path": ociPath,
+			}).Trace("using directory handler")
+
+			manager.handle = func(ctx context.Context) (context.Context, handler.Handler, error) {
+				return handler.NewDirectoryHandler(ctx, ociPath)
+			}
+
+			return nil
+		}
+
 		return fmt.Errorf("could not detect OCI handler")
 	}
 }
