@@ -1,0 +1,21 @@
+features:
+  - name: with_gitignore
+    enabled: {{ .With_gitignore|lower }}
+    resources:
+      - .gitignore
+  - name: with_docs
+    enabled: {{ .With_docs|lower }}
+    resources:
+      - README.md
+      - COPYING.md
+      - MAINTAINERS.md
+      - CODING_STYLE.md
+      - CONTRIBUTING.md
+  - name: provide_main
+    enabled: {{ .Provide_main|lower }}
+    resources:
+      - main.c
+  - name: with_patchedir
+    enabled: {{ .With_patchedir|lower }}
+    resources:
+      - patches/

@@ -1,0 +1,99 @@
+# SPDX-License-Identifier: BSD-3-Clause
+#
+{{if .Description }}
+# {{ .Description }}
+{{else}}
+# {{ .Project_name }} Unikraft library
+{{ end }}
+#
+# Authors: {{ .Author_name }} <{{ .Author_email }}>
+#
+# Copyright (c) {{ .Year }}, {{ .Copyright_holder }}. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+################################################################################
+# Library registration
+################################################################################
+$(eval $(call addlib_s,{{ .Lib_kname }},$(CONFIG_{{ .Lib_kname }})))
+
+################################################################################
+# Sources
+################################################################################]
+{{if .Commit}}
+{{ .Lib_kname }}_COMMIT = {{ .Commit }}
+{{ end }}
+{{ if .Version }}
+{{ .Lib_kname|upper }}_VERSION = {{ .Version }}
+{{ end }}
+{{ .Lib_kname|upper }}_URL = {{ .Origin_url }}
+{{ .Lib_kname|upper }}_SUBDIR = {{ .Project_name }}-$({{ .Lib_kname|upper }}_VERSION)
+{{if .With_patchedir }}
+{{ .Lib_kname|upper }}_PATCHDIR = $({{ .Lib_kname|upper }}_BASE)/patches
+$(eval $(call patch,{{ .Lib_kname }},$({{ .Lib_kname|upper }}_PATCHDIR),$({{ .Lib_kname|upper }}_SUBDIR)))
+{{ end }}
+$(eval $(call fetch,{{ .Lib_kname|lower }},$({{ .Lib_kname|upper }}_URL)))
+
+################################################################################
+# Helpers
+################################################################################
+{{ .Lib_kname|upper }}_SRC = $({{ .Lib_kname|upper }}_ORIGIN)/$({{ .Lib_kname|upper }}_SUBDIR)
+
+################################################################################
+# Library includes
+################################################################################
+CINCLUDES-y += -I$({{ .Lib_kname|upper }}_BASE)/include
+
+################################################################################
+# Flags
+################################################################################
+{{ .Lib_kname|upper }}_FLAGS =
+
+# Suppress some warnings to make the build process look neater
+{{ .Lib_kname|upper }}_FLAGS_SUPPRESS =
+
+{{ .Lib_kname|upper }}_CFLAGS-y += $({{ .Lib_kname|upper }}_FLAGS)
+{{ .Lib_kname|upper }}_CFLAGS-y += $({{ .Lib_kname|upper }}_FLAGS_SUPPRESS)
+
+################################################################################
+# Glue code
+################################################################################
+# Include paths
+# {{ .Lib_kname|upper }}_CINCLUDES-y   += $({{ .Lib_kname|upper }}_COMMON_INCLUDES-y)
+# {{ .Lib_kname|upper }}_CXXINCLUDES-y += $({{ .Lib_kname|upper }}_COMMON_INCLUDES-y)
+
+{{ if .Provide_main }}
+{{ .Lib_kname|upper }}SRCS-$(CONFIG_{{ .Lib_kname|upper }}_MAIN_FUNCTION) += $({{ .Lib_kname|upper }}_BASE)/main.c|unikraft
+{{end}}
+
+################################################################################
+# Library sources
+################################################################################
+# {{ .Lib_kname|upper }}_SRCS-y += # Include source files here
+
+{{range $index, $source_file := .Source_files }}
+{{ .Lib_kname|upper }}_SRCS-y += {{ $source_file }}
+{{end}}
