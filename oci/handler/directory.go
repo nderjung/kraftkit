@@ -10,24 +10,35 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
-
-	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+)
+
+const (
+	DirectoryHandlerManifestsDir = "manifests"
+	DirectoryHandlerConfigsDir   = "configs"
+	DirectoryHandlerLayersDir    = "layers"
 )
 
 type DirectoryHandler struct {
 	path string
 }
 
-func NewDirectoryHandler(ctx context.Context, path string) (context.Context, *DirectoryHandler, error) {
-	return ctx, &DirectoryHandler{path: path}, nil
+func NewDirectoryHandler(path string) (*DirectoryHandler, error) {
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		return nil, fmt.Errorf("could not create local oci cache directory: %w", err)
+	}
+
+	return &DirectoryHandler{path: path}, nil
 }
 
 // DigestExists implements DigestResolver.
@@ -48,59 +59,126 @@ func (handle *DirectoryHandler) DigestExists(ctx context.Context, dgst digest.Di
 
 // ListManifests implements DigestResolver.
 func (handle *DirectoryHandler) ListManifests(ctx context.Context) (manifests []ocispec.Manifest, err error) {
-	// Iterate over the manifest directory
-	manifests_path := handle.path + "/manifests"
+	manifestsDir := filepath.Join(handle.path, DirectoryHandlerManifestsDir)
 
-	// Open the directory
-	dir, err := os.Open(manifests_path)
-	if err != nil {
-		return nil, err
+	// Create the manifest directory if it does not exist and return nil, since
+	// there's nothing to return.
+	if _, err := os.Stat(manifestsDir); err != nil && os.IsNotExist(err) {
+		if err := os.MkdirAll(manifestsDir, 0o755); err != nil {
+			return nil, fmt.Errorf("could not create local oci cache directory: %w", err)
+		}
+
+		return nil, nil
 	}
 
-	// Close the directory
-	defer dir.Close()
+	// Since the directory structure is nested, recursively walk the manifest
+	// directory to find all manifest entries.
+	if err := filepath.WalkDir(manifestsDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 
-	// Read the directory
-	files, err := dir.Readdir(0)
-	if err != nil {
-		return nil, err
-	}
-
-	// Iterate over the files
-	for _, file := range files {
 		// Skip directories
-		if file.IsDir() {
-			continue
+		if d.IsDir() {
+			return nil
 		}
 
 		// Skip files that don't end in .json
-		if !strings.HasSuffix(file.Name(), ".json") {
-			continue
+		if !strings.HasSuffix(d.Name(), ".json") {
+			return nil
 		}
 
 		// Read the manifest
-		rawManifest, err := os.ReadFile(manifests_path + "/" + file.Name())
+		rawManifest, err := os.ReadFile(path)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		manifest := ocispec.Manifest{}
-		err = json.Unmarshal(rawManifest, &manifest)
-		if err != nil {
-			return nil, err
+		if err = json.Unmarshal(rawManifest, &manifest); err != nil {
+			return err
 		}
 
 		// Append the manifest to the list
 		manifests = append(manifests, manifest)
+
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	return manifests, nil
 }
 
+// progressWriter wraps an existing io.Reader and reports how much content has
+// been written.
+type progressWriter struct {
+	io.Reader
+	total      int
+	onProgress func(float64)
+}
+
+// Read overrides the underlying io.Reader's Read method and injects the
+// onProgress callback.
+func (pt *progressWriter) Read(p []byte) (int, error) {
+	n, err := pt.Reader.Read(p)
+	pt.total += n
+	pt.onProgress(float64(n / pt.total))
+	return n, err
+}
+
 // PushDigest implements DigestPusher.
-func (handle *DirectoryHandler) PushDigest(ctx context.Context, ref string, desc ocispec.Descriptor, reader io.Reader, onProgress func(float64)) (err error) {
-	// Write to the content store
-	// Just write an entry for the digest
+func (handle *DirectoryHandler) PushDigest(ctx context.Context, ref string, desc ocispec.Descriptor, reader io.Reader, onProgress func(float64)) error {
+	blobPath := handle.path
+
+	switch desc.MediaType {
+	case ocispec.MediaTypeImageConfig:
+		blobPath = filepath.Join(
+			blobPath,
+			DirectoryHandlerConfigsDir,
+			desc.Digest.Algorithm().String(),
+			desc.Digest.Encoded(),
+		)
+	case ocispec.MediaTypeImageManifest:
+		blobPath = filepath.Join(
+			blobPath,
+			DirectoryHandlerManifestsDir,
+			strings.ReplaceAll(ref, ":", string(filepath.Separator))+".json",
+		)
+	case ocispec.MediaTypeImageLayer:
+		fallthrough
+	default:
+		blobPath = filepath.Join(
+			blobPath,
+			DirectoryHandlerLayersDir,
+			desc.Digest.Algorithm().String(),
+			desc.Digest.Encoded(),
+		)
+	}
+
+	// Create the parent directory if it does not exist
+	if err := os.MkdirAll(filepath.Dir(blobPath), 0o644); err != nil {
+		return fmt.Errorf("could not make parent directory: %w", err)
+	}
+
+	blob, err := os.OpenFile(blobPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+	if err != nil {
+		return fmt.Errorf("could not create blob: %w", err)
+	}
+
+	var progresReader io.Reader
+	if onProgress != nil {
+		progresReader = &progressWriter{
+			Reader:     reader,
+			onProgress: onProgress,
+		}
+	} else {
+		progresReader = reader
+	}
+
+	if _, err := io.Copy(blob, progresReader); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -113,58 +191,67 @@ func (handle *DirectoryHandler) ResolveImage(ctx context.Context, fullref string
 		return ocispec.Image{}, err
 	}
 
-	manifest_path := handle.path + "/manifests/" + strings.ReplaceAll(ref.Name(), "/", "-") + ".json"
+	manifestPath := filepath.Join(
+		handle.path,
+		DirectoryHandlerManifestsDir,
+		strings.ReplaceAll(ref.Name(), ":", string(filepath.Separator))+".json",
+	)
 
 	// Check whether the manifest exists
-	if _, err := os.Stat(manifest_path); err != nil {
-		return ocispec.Image{}, fmt.Errorf("manifest for %s does not exist", ref.Name())
+	if _, err := os.Stat(manifestPath); err != nil {
+		return ocispec.Image{}, fmt.Errorf("manifest for %s does not exist: %s", ref.Name(), manifestPath)
 	}
 
 	// Read the manifest
-	reader, err := os.Open(manifest_path)
+	reader, err := os.Open(manifestPath)
 	if err != nil {
 		return ocispec.Image{}, err
 	}
-	raw_manifest, err := io.ReadAll(reader)
+
+	manifestRaw, err := io.ReadAll(reader)
 	if err != nil {
 		return ocispec.Image{}, err
 	}
 
 	// Unmarshal the manifest
 	manifest := ocispec.Manifest{}
-	err = json.Unmarshal(raw_manifest, &manifest)
-	if err != nil {
+	if err = json.Unmarshal(manifestRaw, &manifest); err != nil {
 		return ocispec.Image{}, err
 	}
 
 	// Split the digest into algorithm and hex
-	config_name := v1.Hash{
+	configHash := v1.Hash{
 		Algorithm: manifest.Config.Digest.Algorithm().String(),
 		Hex:       manifest.Config.Digest.Encoded(),
 	}
 
-	// Find the config
-	config_path := handle.path + "/configs/" + config_name.Algorithm + "/" + config_name.Hex
+	// Find the config file at the specified directory
+	configDir := filepath.Join(
+		handle.path,
+		DirectoryHandlerConfigsDir,
+		configHash.Algorithm,
+		configHash.Hex,
+	)
 
 	// Check whether the config exists
-	if _, err := os.Stat(config_path); err != nil {
-		return ocispec.Image{}, fmt.Errorf("config for %s does not exist", ref.Name())
+	if _, err := os.Stat(configDir); err != nil {
+		return ocispec.Image{}, fmt.Errorf("could not access config file for %s: %w", ref.Name(), err)
 	}
 
 	// Read the config
-	reader, err = os.Open(config_path)
+	reader, err = os.Open(configDir)
 	if err != nil {
 		return ocispec.Image{}, err
 	}
-	raw_config, err := io.ReadAll(reader)
+
+	configRaw, err := io.ReadAll(reader)
 	if err != nil {
 		return ocispec.Image{}, err
 	}
 
 	// Unmarshal the config
 	config := ocispec.Image{}
-	err = json.Unmarshal(raw_config, &config)
-	if err != nil {
+	if err = json.Unmarshal(configRaw, &config); err != nil {
 		return ocispec.Image{}, err
 	}
 
@@ -173,9 +260,8 @@ func (handle *DirectoryHandler) ResolveImage(ctx context.Context, fullref string
 }
 
 // FetchImage implements ImageFetcher.
-func (handle *DirectoryHandler) FetchImage(ctx context.Context, fullref string, onProgress func(float64)) (err error) {
+func (handle *DirectoryHandler) FetchImage(ctx context.Context, fullref, platform string, onProgress func(float64)) (err error) {
 	ref, err := name.ParseReference(fullref)
-
 	if err != nil {
 		return err
 	}
@@ -191,21 +277,24 @@ func (handle *DirectoryHandler) FetchImage(ctx context.Context, fullref string, 
 		return err
 	}
 
-	manifest_path := handle.path + "/manifests/" + strings.ReplaceAll(ref.Name(), "/", "-") + ".json"
+	manifestPath := filepath.Join(
+		handle.path,
+		DirectoryHandlerManifestsDir,
+		strings.ReplaceAll(ref.Name(), ":", string(filepath.Separator))+".json",
+	)
+
 	// Recursively create the directory
-	err = os.MkdirAll(manifest_path[:strings.LastIndex(manifest_path, "/")], 0755)
-	if err != nil {
+	if err = os.MkdirAll(manifestPath[:strings.LastIndex(manifestPath, "/")], 0755); err != nil {
 		return err
 	}
 
 	// Open a writer to the specified path
-	writer, err := os.Create(manifest_path)
+	writer, err := os.Create(manifestPath)
 	if err != nil {
 		return err
 	}
 
-	_, err = writer.Write(manifest)
-	if err != nil {
+	if _, err := writer.Write(manifest); err != nil {
 		return err
 	}
 
@@ -214,33 +303,35 @@ func (handle *DirectoryHandler) FetchImage(ctx context.Context, fullref string, 
 		return err
 	}
 
-	config_name, err := img.ConfigName()
+	configName, err := img.ConfigName()
 	if err != nil {
 		return err
 	}
 
-	config_dir := handle.path + "/configs/" + config_name.Algorithm
-	config_path := config_dir + "/" + config_name.Hex
+	configPath := filepath.Join(
+		handle.path,
+		DirectoryHandlerConfigsDir,
+		configName.Algorithm,
+		configName.Hex,
+	)
 
 	// If the config already exists, skip it
-	if _, err := os.Stat(config_path); err == nil {
+	if _, err := os.Stat(configPath); err == nil {
 		return nil
 	}
 
 	// Recursively create the directory
-	err = os.MkdirAll(config_path[:strings.LastIndex(config_path, "/")], 0755)
-	if err != nil {
+	if err = os.MkdirAll(configPath[:strings.LastIndex(configPath, "/")], 0755); err != nil {
 		return err
 	}
 
-	writer, err = os.Create(config_path)
+	writer, err = os.Create(configPath)
 	if err != nil {
 		return err
 	}
 
 	// Write the config
-	_, err = writer.Write(config)
-	if err != nil {
+	if _, err = writer.Write(config); err != nil {
 		return err
 	}
 
@@ -256,21 +347,24 @@ func (handle *DirectoryHandler) FetchImage(ctx context.Context, fullref string, 
 			return err
 		}
 
-		layer_dir := handle.path + "/layers/" + digest.Algorithm
-		layer_path := layer_dir + "/" + digest.Hex
+		layerPath := filepath.Join(
+			handle.path,
+			DirectoryHandlerLayersDir,
+			digest.Algorithm,
+			digest.Hex,
+		)
 
 		// Recursively create the directory
-		err = os.MkdirAll(layer_path[:strings.LastIndex(layer_path, "/")], 0755)
-		if err != nil {
+		if err = os.MkdirAll(layerPath[:strings.LastIndex(layerPath, "/")], 0755); err != nil {
 			return err
 		}
 
 		// If the layer already exists, skip it
-		if _, err := os.Stat(layer_path); err == nil {
+		if _, err := os.Stat(layerPath); err == nil {
 			continue
 		}
 
-		writer, err = os.Create(layer_path)
+		writer, err = os.Create(layerPath)
 		if err != nil {
 			return err
 		}
@@ -280,11 +374,9 @@ func (handle *DirectoryHandler) FetchImage(ctx context.Context, fullref string, 
 			return err
 		}
 
-		_, err = io.Copy(writer, reader)
-		if err != nil {
+		if _, err = io.Copy(writer, reader); err != nil {
 			return err
 		}
-
 	}
 
 	return nil
@@ -311,33 +403,35 @@ func (handle *DirectoryHandler) UnpackImage(ctx context.Context, ref string, des
 		}
 
 		// Get the layer path
-		layer_path := handle.path + "/layers/" + digest.Algorithm + "/" + digest.Hex
+		layerPath := filepath.Join(
+			handle.path,
+			DirectoryHandlerLayersDir,
+			digest.Algorithm,
+			digest.Hex,
+		)
 
 		// Layer path is a tarball, so we need to extract it
-		reader, err := os.Open(layer_path)
+		reader, err := os.Open(layerPath)
 		if err != nil {
 			return err
 		}
+
 		defer reader.Close()
 
 		tr := tar.NewReader(reader)
 
 		for {
 			hdr, err := tr.Next()
-			if err == io.EOF {
-				break
-			}
 			if err != nil {
-				return err
+				break
 			}
 
 			// Write the file to the destination
-			path := dest + "/" + hdr.Name
+			path := filepath.Join(dest, hdr.Name)
 
 			// If the file is a directory, create it
 			if hdr.Typeflag == tar.TypeDir {
-				err = os.MkdirAll(path, 0755)
-				if err != nil {
+				if err := os.MkdirAll(path, 0755); err != nil {
 					return err
 				}
 				continue
@@ -345,8 +439,7 @@ func (handle *DirectoryHandler) UnpackImage(ctx context.Context, ref string, des
 
 			// If the directory in the path doesn't exist, create it
 			if _, err := os.Stat(path[:strings.LastIndex(path, "/")]); os.IsNotExist(err) {
-				err = os.MkdirAll(path[:strings.LastIndex(path, "/")], 0755)
-				if err != nil {
+				if err := os.MkdirAll(path[:strings.LastIndex(path, "/")], 0755); err != nil {
 					return err
 				}
 			}
@@ -356,15 +449,13 @@ func (handle *DirectoryHandler) UnpackImage(ctx context.Context, ref string, des
 			if err != nil {
 				return err
 			}
+
 			defer writer.Close()
 
-			_, err = io.Copy(writer, tr)
-			if err != nil {
+			if _, err = io.Copy(writer, tr); err != nil {
 				return err
 			}
-
 		}
-
 	}
 
 	return nil
