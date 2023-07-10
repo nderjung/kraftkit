@@ -3,12 +3,12 @@
 {{if .Description }}
 # {{ .Description }}
 {{else}}
-# {{ .Project_name }} Unikraft library
+# {{ .ProjectName }} Unikraft library
 {{ end }}
 #
-# Authors: {{ .Author_name }} <{{ .Author_email }}>
+# Authors: {{ .AuthorName }} <{{ .AuthorEmail }}>
 #
-# Copyright (c) {{ .Year }}, {{ .Copyright_holder }}. All rights reserved.
+# Copyright (c) {{ .Year }}, {{ .CopyrightHolder }}. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -38,62 +38,62 @@
 ################################################################################
 # Library registration
 ################################################################################
-$(eval $(call addlib_s,{{ .Lib_kname }},$(CONFIG_{{ .Lib_kname }})))
+$(eval $(call addlib_s,{{ .LibKName }},$(CONFIG_{{ .LibKName }})))
 
 ################################################################################
 # Sources
 ################################################################################]
 {{if .Commit}}
-{{ .Lib_kname }}_COMMIT = {{ .Commit }}
+{{ .LibKName }}_COMMIT = {{ .Commit }}
 {{ end }}
 {{ if .Version }}
-{{ .Lib_kname|upper }}_VERSION = {{ .Version }}
+{{ .LibKName|upper }}_VERSION = {{ .Version }}
 {{ end }}
-{{ .Lib_kname|upper }}_URL = {{ .Origin_url }}
-{{ .Lib_kname|upper }}_SUBDIR = {{ .Project_name }}-$({{ .Lib_kname|upper }}_VERSION)
-{{if .With_patchedir }}
-{{ .Lib_kname|upper }}_PATCHDIR = $({{ .Lib_kname|upper }}_BASE)/patches
-$(eval $(call patch,{{ .Lib_kname }},$({{ .Lib_kname|upper }}_PATCHDIR),$({{ .Lib_kname|upper }}_SUBDIR)))
+{{ .LibKName|upper }}_URL = {{ .Origin_url }}
+{{ .LibKName|upper }}_SUBDIR = {{ .ProjectName }}-$({{ .LibKName|upper }}_VERSION)
+{{if .WithPatchedir }}
+{{ .LibKName|upper }}_PATCHDIR = $({{ .LibKName|upper }}_BASE)/patches
+$(eval $(call patch,{{ .LibKName }},$({{ .LibKName|upper }}_PATCHDIR),$({{ .LibKName|upper }}_SUBDIR)))
 {{ end }}
-$(eval $(call fetch,{{ .Lib_kname|lower }},$({{ .Lib_kname|upper }}_URL)))
+$(eval $(call fetch,{{ .LibKName|lower }},$({{ .LibKName|upper }}_URL)))
 
 ################################################################################
 # Helpers
 ################################################################################
-{{ .Lib_kname|upper }}_SRC = $({{ .Lib_kname|upper }}_ORIGIN)/$({{ .Lib_kname|upper }}_SUBDIR)
+{{ .LibKName|upper }}_SRC = $({{ .LibKName|upper }}_ORIGIN)/$({{ .LibKName|upper }}_SUBDIR)
 
 ################################################################################
 # Library includes
 ################################################################################
-CINCLUDES-y += -I$({{ .Lib_kname|upper }}_BASE)/include
+CINCLUDES-y += -I$({{ .LibKName|upper }}_BASE)/include
 
 ################################################################################
 # Flags
 ################################################################################
-{{ .Lib_kname|upper }}_FLAGS =
+{{ .LibKName|upper }}_FLAGS =
 
 # Suppress some warnings to make the build process look neater
-{{ .Lib_kname|upper }}_FLAGS_SUPPRESS =
+{{ .LibKName|upper }}_FLAGS_SUPPRESS =
 
-{{ .Lib_kname|upper }}_CFLAGS-y += $({{ .Lib_kname|upper }}_FLAGS)
-{{ .Lib_kname|upper }}_CFLAGS-y += $({{ .Lib_kname|upper }}_FLAGS_SUPPRESS)
+{{ .LibKName|upper }}_CFLAGS-y += $({{ .LibKName|upper }}_FLAGS)
+{{ .LibKName|upper }}_CFLAGS-y += $({{ .LibKName|upper }}_FLAGS_SUPPRESS)
 
 ################################################################################
 # Glue code
 ################################################################################
 # Include paths
-# {{ .Lib_kname|upper }}_CINCLUDES-y   += $({{ .Lib_kname|upper }}_COMMON_INCLUDES-y)
-# {{ .Lib_kname|upper }}_CXXINCLUDES-y += $({{ .Lib_kname|upper }}_COMMON_INCLUDES-y)
+# {{ .LibKName|upper }}_CINCLUDES-y   += $({{ .LibKName|upper }}_COMMON_INCLUDES-y)
+# {{ .LibKName|upper }}_CXXINCLUDES-y += $({{ .LibKName|upper }}_COMMON_INCLUDES-y)
 
-{{ if .Provide_main }}
-{{ .Lib_kname|upper }}SRCS-$(CONFIG_{{ .Lib_kname|upper }}_MAIN_FUNCTION) += $({{ .Lib_kname|upper }}_BASE)/main.c|unikraft
+{{ if .ProvideMain }}
+{{ .LibKName|upper }}SRCS-$(CONFIG_{{ .LibKName|upper }}_MAIN_FUNCTION) += $({{ .LibKName|upper }}_BASE)/main.c|unikraft
 {{end}}
 
 ################################################################################
 # Library sources
 ################################################################################
-# {{ .Lib_kname|upper }}_SRCS-y += # Include source files here
+# {{ .LibKName|upper }}_SRCS-y += # Include source files here
 
 {{range $index, $source_file := .Source_files }}
-{{ .Lib_kname|upper }}_SRCS-y += {{ $source_file }}
+{{ .LibKName|upper }}_SRCS-y += {{ $source_file }}
 {{end}}

@@ -1,8 +1,8 @@
-menuconfig {{ .Lib_kname }}
+menuconfig {{ .LibKName }}
 {{if .Description}}
 	bool "{{ .Description }}"
 {{else}}
-	bool "{{ .Project_name }} Unikraft library"
+	bool "{{ .ProjectName }} Unikraft library"
 {{end}}
 	default n
 
@@ -10,10 +10,10 @@ menuconfig {{ .Lib_kname }}
 	select {{ $element }}
 {{end}}
 
-{{if .Lib_kname }}
+{{if .LibKName }}
 
-{{if .Provide_main}}
-config {{ .Lib_kname }}_MAIN_FUNCTION
+{{if .ProvideMain}}
+config {{ .LibKName }}_MAIN_FUNCTION
 	bool "Provide main function"
 	default n
 {{end}}
