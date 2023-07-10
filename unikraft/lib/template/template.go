@@ -124,5 +124,10 @@ func WithCopyrightHolder(copyrightHolder string) TemplateOption {
 // Generate template using `.tmpl` files and `Template` struct fields.
 func (t Template) templateGenerator(ctx context.Context) error {
 	// Has to implement
+
+	// os.ReadFile("to/path")
+	// Implementation details:
+	// Read all the `tmpl` files from the current directory one by one
+	// and create template.New("name of the template (set it diffrent for diffrent tmpl file)").Parse("Each file string")
 	return nil
 }
