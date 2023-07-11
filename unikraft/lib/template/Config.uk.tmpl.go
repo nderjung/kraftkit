@@ -1,4 +1,7 @@
-menuconfig {{ .LibKName }}
+package template
+
+func ConfigUkTemplateGenerator() string {
+	return `menuconfig {{ .LibKName }}
 {{if .Description}}
 	bool "{{ .Description }}"
 {{else}}
@@ -18,4 +21,5 @@ config {{ .LibKName }}_MAIN_FUNCTION
 	default n
 {{end}}
 
-{{end}}
+{{end}}`
+}

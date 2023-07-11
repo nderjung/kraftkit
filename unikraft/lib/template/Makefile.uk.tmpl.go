@@ -1,4 +1,7 @@
-# SPDX-License-Identifier: BSD-3-Clause
+package template
+
+func MakefileUkGenerator() string {
+	return `# SPDX-License-Identifier: BSD-3-Clause
 #
 {{if .Description }}
 # {{ .Description }}
@@ -96,4 +99,5 @@ CINCLUDES-y += -I$({{ .LibKName|upper }}_BASE)/include
 
 {{range $index, $source_file := .Source_files }}
 {{ .LibKName|upper }}_SRCS-y += {{ $source_file }}
-{{end}}
+{{end}}`
+}

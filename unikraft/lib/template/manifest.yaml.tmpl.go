@@ -1,4 +1,7 @@
-features:
+package template
+
+func ManifestYamlTemplateGenerator() string {
+	return `features:
   - name: WithGitignore
     enabled: {{ .WithGitignore|lower }}
     resources:
@@ -18,4 +21,5 @@ features:
   - name: WithPatchedir
     enabled: {{ .WithPatchedir|lower }}
     resources:
-      - patches/
+      - patches/`
+}

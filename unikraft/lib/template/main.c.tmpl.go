@@ -1,4 +1,7 @@
-{{if cookiecutter.CopyrightHolder }}
+package template
+
+func MainTemplateGenerator() string {
+	return `{{if cookiecutter.CopyrightHolder }}
 // SPDX-License-Identifier: BSD-3-Clause
 //
 // {{ .ProjectName }} Unikraft library
@@ -36,4 +39,5 @@ int main(int argc, char *argv[])
 {
 	// TODO: Replace with main
 	return {{ .ProjectName }}_main(argc, argv);
+}`
 }
