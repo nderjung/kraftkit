@@ -1,29 +1,29 @@
 package init
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/spf13/cobra"
 	"kraftkit.sh/cmdfactory"
 	"kraftkit.sh/packmanager"
+	"kraftkit.sh/unikraft/lib/template"
 )
 
 type Init struct {
-	ProjectName     string `long:"project-name" short:"pn" usage:"Set the project name to the template"`
-	LibraryName     string `long:"library-name" short:"ln" usage:"Set the library name to the template"`
-	LibraryKName    string `long:"library-kname" short:"lkn" usage:"Set the library kname to the template"`
+	ProjectName     string `long:"project-name" usage:"Set the project name to the template"`
+	LibraryName     string `long:"library-name" usage:"Set the library name to the template" default:"lib-template"`
+	LibraryKName    string `long:"library-kname" usage:"Set the library kname to the template" default:"LIBTEMPLATE"`
 	Version         string `long:"version" short:"v" usage:"Set the packge version to the template"`
-	Description     string `long:"description" short:"desc" usage:"Set the description to the template"`
-	AuthorName      string `long:"author-name" short:"an" usage:"Set the author name to the template"`
-	AuthorEmail     string `long:"author-email" short:"ae" usage:"Set the author email to the template"`
-	InitialBranch   string `long:"initial-branch" short:"ib" usage:"Set the initial branch name to the template"`
-	CopyrightHolder string `long:"copyright-holder" short:"ch" usage:"Set the copyright holder name to the template"`
-	ProvideMain     bool   `long:"provide-main" short:"pm" usage:"provide provide-main to the template"`
-	WithGitignore   bool   `long:"git-ignore" short:"pm" usage:"provide git-ignore to the template"`
-	WithDocs        bool   `long:"docs" short:"pm" usage:"provide docs to the template"`
-	WithPatchedir   bool   `long:"patch-dir" short:"pm" usage:"provide patch directory to the template"`
+	Description     string `long:"description"  usage:"Set the description to the template"`
+	AuthorName      string `long:"author-name" usage:"Set the author name to the template"`
+	AuthorEmail     string `long:"author-email" usage:"Set the author email to the template"`
+	InitialBranch   string `long:"initial-branch" usage:"Set the initial branch name to the template" default:"staging"`
+	CopyrightHolder string `long:"copyright-holder" usage:"Set the copyright holder name to the template"`
+	NoProvideMain   bool   `long:"no-provide-main" usage:"Do not provide provide-main to the template"`
+	NoWithGitignore bool   `long:"no-git-ignore" usage:"Do not provide git-ignore to the template"`
+	NoWithDocs      bool   `long:"no-docs" usage:"Do not provide docs to the template"`
+	WithPatchedir   bool   `long:"patch-dir" usage:"provide patch directory to the template"`
 }
 
 func New() *cobra.Command {
@@ -63,7 +63,7 @@ func (*Init) Pre(cmd *cobra.Command, _ []string) error {
 func (opts *Init) Run(cmd *cobra.Command, args []string) error {
 	var err error
 
-	// ctx := cmd.Context()
+	ctx := cmd.Context()
 	workdir := ""
 	if len(args) > 0 {
 		workdir = args[0]
@@ -76,7 +76,19 @@ func (opts *Init) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Println("Current location is ", workdir)
+	templ, err := template.NewTemplate(ctx, template.WithProjectName(opts.ProjectName), template.WithLibName(opts.LibraryName),
+		template.WithLibKName(opts.LibraryKName), template.WithVersion(opts.Version), template.WithDescription(opts.Description),
+		template.WithAuthorName(opts.AuthorName), template.WithAuthorEmail(opts.AuthorEmail), template.WithInitialBranch(opts.InitialBranch),
+		template.WithCopyrightHolder(opts.CopyrightHolder), template.WithProvideMain(!opts.NoProvideMain), template.WithGitignore(!opts.NoWithGitignore),
+		template.WithDocs(!opts.NoWithDocs), template.WithPatchedir(opts.WithPatchedir))
+	if err != nil {
+		return err
+	}
+
+	err = templ.TemplateGenerator(ctx, workdir)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

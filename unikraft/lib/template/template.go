@@ -2,6 +2,7 @@ package template
 
 import (
 	"context"
+	"fmt"
 )
 
 type Template struct {
@@ -26,16 +27,6 @@ func NewTemplate(ctx context.Context, topts ...TemplateOption) (Template, error)
 	// Has to implement
 	var templ Template
 
-	// Initialising default values to the template struct.
-	templ.LibName = "lib-template"
-	templ.LibKName = "LIBTEMPLATE"
-	templ.InitialBranch = "staging"
-	templ.ProvideMain = true
-	templ.WithGitignore = true
-	templ.WithDocs = true
-	templ.WithPatchedir = false
-
-	// Initialising custom values to the template struct.
 	for _, topt := range topts {
 		topt(&templ)
 	}
@@ -122,9 +113,11 @@ func WithCopyrightHolder(copyrightHolder string) TemplateOption {
 }
 
 // Generate template using `.tmpl` files and `Template` struct fields.
-func (t Template) templateGenerator(ctx context.Context) error {
+func (t Template) TemplateGenerator(ctx context.Context, workdir string) error {
 	// Has to implement
 
+	fmt.Println("running templateGenerator")
+	fmt.Println("Template is", t)
 	// os.ReadFile("to/path")
 	// Implementation details:
 	// Read all the `tmpl` files from the current directory one by one
