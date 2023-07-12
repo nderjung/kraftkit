@@ -1,16 +1,18 @@
-package init
+package create
 
 import (
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
+	"github.com/erikgeiser/promptkit/textinput"
 	"github.com/spf13/cobra"
+
 	"kraftkit.sh/cmdfactory"
 	"kraftkit.sh/packmanager"
 	"kraftkit.sh/unikraft/lib/template"
 )
 
-type Init struct {
+type Create struct {
 	ProjectName     string `long:"project-name" usage:"Set the project name to the template"`
 	LibraryName     string `long:"library-name" usage:"Set the library name to the template" default:"lib-template"`
 	LibraryKName    string `long:"library-kname" usage:"Set the library kname to the template" default:"LIBTEMPLATE"`
@@ -27,9 +29,9 @@ type Init struct {
 }
 
 func New() *cobra.Command {
-	cmd, err := cmdfactory.New(&Init{}, cobra.Command{
+	cmd, err := cmdfactory.New(&Create{}, cobra.Command{
 		Short:   "Initialise a package template",
-		Use:     "init [FLAGS] [DIR]",
+		Use:     "create [FLAGS] [DIR]",
 		Aliases: []string{"l", "list"},
 		Args:    cmdfactory.MaxDirArgs(1),
 		Long: heredoc.Doc(`
@@ -48,7 +50,7 @@ func New() *cobra.Command {
 	return cmd
 }
 
-func (*Init) Pre(cmd *cobra.Command, _ []string) error {
+func (*Create) Pre(cmd *cobra.Command, _ []string) error {
 	ctx := cmd.Context()
 	pm, err := packmanager.NewUmbrellaManager(ctx)
 	if err != nil {
@@ -60,7 +62,7 @@ func (*Init) Pre(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (opts *Init) Run(cmd *cobra.Command, args []string) error {
+func (opts *Create) Run(cmd *cobra.Command, args []string) error {
 	var err error
 
 	ctx := cmd.Context()
@@ -76,17 +78,37 @@ func (opts *Init) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	templ, err := template.NewTemplate(ctx, template.WithProjectName(opts.ProjectName), template.WithLibName(opts.LibraryName),
-		template.WithLibKName(opts.LibraryKName), template.WithVersion(opts.Version), template.WithDescription(opts.Description),
-		template.WithAuthorName(opts.AuthorName), template.WithAuthorEmail(opts.AuthorEmail), template.WithInitialBranch(opts.InitialBranch),
-		template.WithCopyrightHolder(opts.CopyrightHolder), template.WithProvideMain(!opts.NoProvideMain), template.WithGitignore(!opts.NoWithGitignore),
-		template.WithDocs(!opts.NoWithDocs), template.WithPatchedir(opts.WithPatchedir))
+	if len(opts.AuthorName) == 0 {
+		input := textinput.New("Author name:")
+		input.InitialValue = os.Getenv("USER")
+		input.Placeholder = "Author name cannot be empty"
+
+		opts.AuthorName, err = input.RunPrompt()
+		if err != nil {
+			return err
+		}
+	}
+
+	templ, err := template.NewTemplate(ctx,
+		template.WithProjectName(opts.ProjectName),
+		template.WithLibName(opts.LibraryName),
+		template.WithLibKName(opts.LibraryKName),
+		template.WithVersion(opts.Version),
+		template.WithDescription(opts.Description),
+		template.WithAuthorName(opts.AuthorName),
+		template.WithAuthorEmail(opts.AuthorEmail),
+		template.WithInitialBranch(opts.InitialBranch),
+		template.WithCopyrightHolder(opts.CopyrightHolder),
+		template.WithProvideMain(!opts.NoProvideMain),
+		template.WithGitignore(!opts.NoWithGitignore),
+		template.WithDocs(!opts.NoWithDocs),
+		template.WithPatchedir(opts.WithPatchedir),
+	)
 	if err != nil {
 		return err
 	}
 
-	err = templ.TemplateGenerator(ctx, workdir)
-	if err != nil {
+	if err = templ.Generate(ctx, workdir); err != nil {
 		return err
 	}
 

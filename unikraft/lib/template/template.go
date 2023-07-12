@@ -5,6 +5,22 @@ import (
 	"html/template"
 	"os"
 	"strings"
+
+	_ "embed"
+)
+
+var (
+	//go:embed CODING_STYLE.md.tmpl
+	CodingStyleTemplate string
+
+	//go:embed Config.uk.tmpl
+	ConfigUkTemplate string
+
+	//go:embed Config.uk.tmpl
+	ContributingTemplate string
+
+	//go:embed Config.uk.tmpl
+	CopyingTemplate string
 )
 
 type Template struct {
@@ -36,86 +52,8 @@ func NewTemplate(ctx context.Context, topts ...TemplateOption) (Template, error)
 	return templ, nil
 }
 
-func WithProjectName(projectName string) TemplateOption {
-	return func(t *Template) {
-		t.ProjectName = projectName
-	}
-}
-
-func WithLibName(libName string) TemplateOption {
-	return func(t *Template) {
-		t.LibName = libName
-	}
-}
-
-func WithLibKName(libKName string) TemplateOption {
-	return func(t *Template) {
-		t.LibKName = libKName
-	}
-}
-
-func WithVersion(version string) TemplateOption {
-	return func(t *Template) {
-		t.Version = version
-	}
-}
-
-func WithDescription(description string) TemplateOption {
-	return func(t *Template) {
-		t.Description = description
-	}
-}
-
-func WithAuthorName(authorName string) TemplateOption {
-	return func(t *Template) {
-		t.AuthorName = authorName
-	}
-}
-
-func WithAuthorEmail(authorEmail string) TemplateOption {
-	return func(t *Template) {
-		t.AuthorEmail = authorEmail
-	}
-}
-
-func WithProvideMain(provideMain bool) TemplateOption {
-	return func(t *Template) {
-		t.ProvideMain = provideMain
-	}
-}
-
-func WithGitignore(gitIgnore bool) TemplateOption {
-	return func(t *Template) {
-		t.WithGitignore = gitIgnore
-	}
-}
-
-func WithDocs(docs bool) TemplateOption {
-	return func(t *Template) {
-		t.WithDocs = docs
-	}
-}
-
-func WithPatchedir(patchedir bool) TemplateOption {
-	return func(t *Template) {
-		t.WithPatchedir = patchedir
-	}
-}
-
-func WithInitialBranch(initialBranch string) TemplateOption {
-	return func(t *Template) {
-		t.InitialBranch = initialBranch
-	}
-}
-
-func WithCopyrightHolder(copyrightHolder string) TemplateOption {
-	return func(t *Template) {
-		t.CopyrightHolder = copyrightHolder
-	}
-}
-
 // Generate template using `.tmpl` files and `Template` struct fields.
-func (t Template) TemplateGenerator(ctx context.Context, workdir string) error {
+func (t Template) Generate(ctx context.Context, workdir string) error {
 	// Has to implement
 	if !strings.HasSuffix(workdir, "/") {
 		workdir += "/"
@@ -138,22 +76,22 @@ func (t Template) TemplateGenerator(ctx context.Context, workdir string) error {
 	// }
 
 	// Parsing all the templates.
-	codingStyleTmpl, err := template.New("CondingStyleMd").Parse(CodingStyleTemplateGenerator())
+	codingStyleTmpl, err := template.New("CondingStyleMd").Parse(CodingStyleTemplate)
 	if err != nil {
 		return err
 	}
 
-	configUkTmpl, err := template.New("ConfigUk").Parse(ConfigUkTemplateGenerator())
+	configUkTmpl, err := template.New("ConfigUk").Parse(ConfigUkTemplate)
 	if err != nil {
 		return err
 	}
 
-	contributingMdTmpl, err := template.New("ContributingMd").Parse(ContributingMdTemplateGenerator())
+	contributingMdTmpl, err := template.New("ContributingMd").Parse(ContributingTemplate)
 	if err != nil {
 		return err
 	}
 
-	copyingMdTmpl, err := template.New("CopyingMd").Parse(CopyingMdTemplateGenerator())
+	copyingMdTmpl, err := template.New("CopyingMd").Parse(CopyingTemplate)
 	if err != nil {
 		return err
 	}

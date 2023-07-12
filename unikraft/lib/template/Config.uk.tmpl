@@ -1,7 +1,4 @@
-package template
-
-func ConfigUkTemplateGenerator() string {
-	return `menuconfig {{ .LibKName }}
+menuconfig {{ .LibKName }}
 {{if .Description }}	bool "{{ .Description }}"
 {{else }}	bool "{{ .ProjectName }} Unikraft library"
 {{end}}	default n

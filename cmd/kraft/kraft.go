@@ -24,6 +24,7 @@ import (
 	"kraftkit.sh/cmd/kraft/clean"
 	"kraftkit.sh/cmd/kraft/events"
 	"kraftkit.sh/cmd/kraft/fetch"
+	"kraftkit.sh/cmd/kraft/lib"
 	"kraftkit.sh/cmd/kraft/login"
 	"kraftkit.sh/cmd/kraft/logs"
 	"kraftkit.sh/cmd/kraft/menu"
@@ -75,6 +76,9 @@ func New() *cobra.Command {
 	cmd.AddCommand(properclean.New())
 	cmd.AddCommand(set.New())
 	cmd.AddCommand(unset.New())
+
+	cmd.AddGroup(&cobra.Group{ID: "lib", Title: "MICROLIBRARY COMMANDS"})
+	cmd.AddCommand(lib.New())
 
 	cmd.AddGroup(&cobra.Group{ID: "pkg", Title: "PACKAGING COMMANDS"})
 	cmd.AddCommand(pkg.New())
