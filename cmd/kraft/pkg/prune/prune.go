@@ -53,9 +53,9 @@ func (opts *Prune) Pre(cmd *cobra.Command, _ []string) error {
 func (opts *Prune) Run(cmd *cobra.Command, args []string) error {
 	var userPackage string
 	if len(args) == 0 && opts.Name == "" && !opts.All {
-		return fmt.Errorf("Package name is not specified to remove")
+		return fmt.Errorf("package name is not specified to remove")
 	} else if opts.All && (len(args) > 0 || opts.Name != "") {
-		return fmt.Errorf("Package name and --all flags cannot be specified at once")
+		return fmt.Errorf("package name and --all flags cannot be specified at once")
 	} else if len(args) == 0 {
 		userPackage = opts.Name
 	} else {
@@ -75,7 +75,11 @@ func (opts *Prune) Run(cmd *cobra.Command, args []string) error {
 
 	ctx := cmd.Context()
 
-	err := packmanager.G(ctx).Prune(ctx, packmanager.WithName(packName), packmanager.WithVersion(version), packmanager.WithAll(opts.All))
+	err := packmanager.G(ctx).Prune(ctx,
+		packmanager.WithName(packName),
+		packmanager.WithVersion(version),
+		packmanager.WithAll(opts.All),
+	)
 	if err != nil {
 		return err
 	}

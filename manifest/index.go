@@ -80,7 +80,7 @@ func (mip ManifestIndexProvider) PullManifest(ctx context.Context, manifest *Man
 }
 
 func (mip ManifestIndexProvider) DeleteManifest(ctx context.Context, packPath string) error {
-	return fmt.Errorf("DeleteManifest is not implemented for ManifestIndexProvider")
+	return os.Remove(mip.path)
 }
 
 func (mip ManifestIndexProvider) String() string {

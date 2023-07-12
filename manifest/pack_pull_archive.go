@@ -42,15 +42,15 @@ func (pp *pullProgressArchive) Write(p []byte) (n int, err error) {
 
 // pullArchive is used internally to pull a specific Manifest resource using the
 // conventional archive.
-func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOption) error {
+func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOption) (string, error) {
 	popts, err := pack.NewPullOptions(opts...)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	resource, cache, checksum, err := resourceCacheChecksum(manifest)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	pp := &pullProgressArchive{
@@ -62,7 +62,7 @@ func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOptio
 	if f, err := os.Stat(cache); !popts.UseCache() || err != nil || f.Size() == 0 {
 		u, err := url.Parse(resource)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		authHeader := ""
@@ -83,7 +83,7 @@ func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOptio
 
 		head, err := http.NewRequestWithContext(ctx, "HEAD", resource, nil)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		head.Header.Set("User-Agent", version.UserAgent())
@@ -101,9 +101,9 @@ func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOptio
 		// archives as Content-Length is, for some reason, always set to 0.
 		res, err := client.Do(head)
 		if err != nil {
-			return fmt.Errorf("could not perform HEAD request on resource: %v", err)
+			return "", fmt.Errorf("could not perform HEAD request on resource: %v", err)
 		} else if res.StatusCode != http.StatusOK {
-			return fmt.Errorf("received HTTP error code %d on resource", res.StatusCode)
+			return "", fmt.Errorf("received HTTP error code %d on resource", res.StatusCode)
 		} else if res.ContentLength <= 0 {
 			log.G(ctx).Warnf("could not determine package size before pulling")
 			pp.total = 0
@@ -114,19 +114,19 @@ func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOptio
 		// Create a temporary partial of the destination path of the resource
 		tmpCache := cache + ".part"
 		if err := os.MkdirAll(filepath.Dir(tmpCache), 0o755); err != nil {
-			return fmt.Errorf("could not create parent directorires: %v", err)
+			return "", fmt.Errorf("could not create parent directorires: %v", err)
 		}
 
 		f, err := os.OpenFile(tmpCache, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o755)
 		if err != nil {
-			return fmt.Errorf("could not create cache file: %v", err)
+			return "", fmt.Errorf("could not create cache file: %v", err)
 		}
 
 		defer f.Close()
 
 		get, err := http.NewRequestWithContext(ctx, "GET", resource, nil)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		get.Header.Set("User-Agent", version.UserAgent())
@@ -143,9 +143,9 @@ func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOptio
 		// Perform the request to actually retrieve the file
 		res, err = client.Do(get)
 		if err != nil {
-			return fmt.Errorf("could not initialize GET request to download package: %v", err)
+			return "", fmt.Errorf("could not initialize GET request to download package: %v", err)
 		} else if res.StatusCode != http.StatusOK {
-			return fmt.Errorf("received non-200 HTTP status code when attempting to download package: %v", err)
+			return "", fmt.Errorf("received non-200 HTTP status code when attempting to download package: %v", err)
 		}
 
 		defer res.Body.Close()
@@ -154,7 +154,7 @@ func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOptio
 		// that we are able to call the onProgress method
 		_, err = io.Copy(f, io.TeeReader(res.Body, pp))
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		if popts.CalculateChecksum() {
@@ -166,17 +166,17 @@ func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOptio
 
 				f, err := os.Open(tmpCache)
 				if err != nil {
-					return fmt.Errorf("could not perform checksum: %v", err)
+					return "", fmt.Errorf("could not perform checksum: %v", err)
 				}
 				defer f.Close()
 
 				h := sha256.New()
 				if _, err := io.Copy(h, f); err != nil {
-					return fmt.Errorf("could not perform checksum: %v", err)
+					return "", fmt.Errorf("could not perform checksum: %v", err)
 				}
 
 				if checksum != string(h.Sum(nil)) {
-					return fmt.Errorf("checksum of package does not match")
+					return "", fmt.Errorf("checksum of package does not match")
 				}
 
 				log.G(ctx).WithFields(logrus.Fields{
@@ -188,7 +188,7 @@ func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOptio
 
 		// Copy the completed download to the local cache path
 		if err := os.Rename(tmpCache, cache); err != nil {
-			return fmt.Errorf("could not move downloaded package '%s' to destination '%s': %v", tmpCache, cache, err)
+			return "", fmt.Errorf("could not move downloaded package '%s' to destination '%s': %v", tmpCache, cache, err)
 		}
 	} else {
 		log.G(ctx).WithFields(logrus.Fields{
@@ -205,7 +205,7 @@ func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOptio
 			manifest.Name,
 		)
 		if err != nil {
-			return fmt.Errorf("could not place component package: %s", err)
+			return "", fmt.Errorf("could not place component package: %s", err)
 		}
 	}
 
@@ -219,9 +219,9 @@ func pullArchive(ctx context.Context, manifest *Manifest, opts ...pack.PullOptio
 		if err := archive.Unarchive(cache, local,
 			archive.StripComponents(1),
 		); err != nil {
-			return fmt.Errorf("could not unarchive: %v", err)
+			return "", fmt.Errorf("could not unarchive: %v", err)
 		}
 	}
 
-	return nil
+	return local, nil
 }

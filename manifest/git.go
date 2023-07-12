@@ -7,6 +7,7 @@ package manifest
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -27,6 +28,7 @@ type GitProvider struct {
 	remote *git.Remote
 	refs   []*gitplumbing.Reference
 	mopts  *ManifestOptions
+	path   string
 	branch string
 	ctx    context.Context
 }
@@ -221,16 +223,23 @@ func (gp GitProvider) PullManifest(ctx context.Context, manifest *Manifest, popt
 
 	manifest.mopts = gp.mopts
 
-	if err := pullArchive(ctx, manifest, popts...); err != nil {
+	path, err := pullArchive(ctx, manifest, popts...)
+	if err != nil {
 		log.G(ctx).Trace(err)
 		return pullGit(ctx, manifest, popts...)
 	}
+
+	gp.path = path
 
 	return nil
 }
 
 func (gp GitProvider) DeleteManifest(ctx context.Context, packPath string) error {
-	return fmt.Errorf("DeleteManifest is not implemented for GitProvider")
+	if len(gp.path) > 0 {
+		return os.Remove(gp.path)
+	}
+
+	return nil
 }
 
 func (gp GitProvider) String() string {

@@ -100,15 +100,18 @@ func (mp ManifestProvider) Manifests() ([]*Manifest, error) {
 func (mp ManifestProvider) PullManifest(ctx context.Context, manifest *Manifest, opts ...pack.PullOption) error {
 	manifest.mopts = mp.manifest.mopts
 
-	return pullArchive(ctx, manifest, opts...)
-}
-
-func (mp ManifestProvider) DeleteManifest(ctx context.Context, packPath string) error {
-	err := os.Remove(packPath)
+	path, err := pullArchive(ctx, manifest, opts...)
 	if err != nil {
 		return err
 	}
+
+	mp.path = path
+
 	return nil
+}
+
+func (mp ManifestProvider) DeleteManifest(ctx context.Context, packPath string) error {
+	return os.Remove(packPath)
 }
 
 func (mp ManifestProvider) String() string {
