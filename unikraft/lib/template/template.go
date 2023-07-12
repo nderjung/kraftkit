@@ -143,6 +143,11 @@ func (t Template) TemplateGenerator(ctx context.Context, workdir string) error {
 		return err
 	}
 
+	configUkTmpl, err := template.New("ConfigUk").Parse(ConfigUkTemplateGenerator())
+	if err != nil {
+		return err
+	}
+
 	contributingMdTmpl, err := template.New("ContributingMd").Parse(ContributingMdTemplateGenerator())
 	if err != nil {
 		return err
@@ -153,35 +158,30 @@ func (t Template) TemplateGenerator(ctx context.Context, workdir string) error {
 		return err
 	}
 
-	configUkTmpl, err := template.New("ConfigUk").Parse(ConfigUkTemplateGenerator())
-	if err != nil {
-		return err
-	}
-
 	mainFileTmpl, err := template.New("Main").Parse(MainTemplateGenerator())
 	if err != nil {
 		return err
 	}
 
-	maintainerMdTmpl, err := template.New("MaintainerMd").Parse(MaintainersMdTemplateGenerator())
-	if err != nil {
-		return err
-	}
+	// maintainerMdTmpl, err := template.New("MaintainerMd").Parse(MaintainersMdTemplateGenerator())
+	// if err != nil {
+	// 	return err
+	// }
 
-	makefileUkTmpl, err := template.New("MakefileUk").Parse(MakefileUkGenerator())
-	if err != nil {
-		return err
-	}
+	// makefileUkTmpl, err := template.New("MakefileUk").Parse(MakefileUkGenerator())
+	// if err != nil {
+	// 	return err
+	// }
 
-	manifestYamlTmpl, err := template.New("ManifestYaml").Parse(ManifestYamlTemplateGenerator())
-	if err != nil {
-		return err
-	}
+	// manifestYamlTmpl, err := template.New("ManifestYaml").Parse(ManifestYamlTemplateGenerator())
+	// if err != nil {
+	// 	return err
+	// }
 
-	readmeMdTmpl, err := template.New("ReadmeMd").Parse(ReadmeMdTemplateGenerator())
-	if err != nil {
-		return err
-	}
+	// readmeMdTmpl, err := template.New("ReadmeMd").Parse(ReadmeMdTemplateGenerator())
+	// if err != nil {
+	// 	return err
+	// }
 
 	// Creating projectName directory to store all the template files.
 	projectDir := workdir + t.ProjectName + "/"
@@ -216,28 +216,33 @@ func (t Template) TemplateGenerator(ctx context.Context, workdir string) error {
 		return err
 	}
 
-	maintainerMdFile, err := os.Create(projectDir + "MAINTAINERS.md")
-	if err != nil {
-		return err
-	}
+	// maintainerMdFile, err := os.Create(projectDir + "MAINTAINERS.md")
+	// if err != nil {
+	// 	return err
+	// }
 
-	makefileUkfile, err := os.Create(projectDir + "Makefile.uk")
-	if err != nil {
-		return err
-	}
+	// makefileUkfile, err := os.Create(projectDir + "Makefile.uk")
+	// if err != nil {
+	// 	return err
+	// }
 
-	manifestYamlFile, err := os.Create(projectDir + "manifest.yaml")
-	if err != nil {
-		return err
-	}
+	// manifestYamlFile, err := os.Create(projectDir + "manifest.yaml")
+	// if err != nil {
+	// 	return err
+	// }
 
-	readmeMdFile, err := os.Create(projectDir + "README.md")
-	if err != nil {
-		return err
-	}
+	// readmeMdFile, err := os.Create(projectDir + "README.md")
+	// if err != nil {
+	// 	return err
+	// }
 
 	// Executing Templates with Template struct values
 	err = codingStyleTmpl.Execute(codingStyleFile, t)
+	if err != nil {
+		return err
+	}
+
+	err = configUkTmpl.Execute(configUkFile, t)
 	if err != nil {
 		return err
 	}
@@ -252,35 +257,30 @@ func (t Template) TemplateGenerator(ctx context.Context, workdir string) error {
 		return err
 	}
 
-	err = configUkTmpl.Execute(configUkFile, t)
-	if err != nil {
-		return err
-	}
-
 	err = mainFileTmpl.Execute(mainFile, t)
 	if err != nil {
 		return err
 	}
 
-	err = maintainerMdTmpl.Execute(maintainerMdFile, t)
-	if err != nil {
-		return err
-	}
+	// err = maintainerMdTmpl.Execute(maintainerMdFile, t)
+	// if err != nil {
+	// 	return err
+	// }
 
-	err = makefileUkTmpl.Execute(makefileUkfile, t)
-	if err != nil {
-		return err
-	}
+	// err = makefileUkTmpl.Execute(makefileUkfile, t)
+	// if err != nil {
+	// 	return err
+	// }
 
-	err = manifestYamlTmpl.Execute(manifestYamlFile, t)
-	if err != nil {
-		return err
-	}
+	// err = manifestYamlTmpl.Execute(manifestYamlFile, t)
+	// if err != nil {
+	// 	return err
+	// }
 
-	err = readmeMdTmpl.Execute(readmeMdFile, t)
-	if err != nil {
-		return err
-	}
+	// err = readmeMdTmpl.Execute(readmeMdFile, t)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

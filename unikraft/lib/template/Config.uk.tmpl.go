@@ -2,24 +2,20 @@ package template
 
 func ConfigUkTemplateGenerator() string {
 	return `menuconfig {{ .LibKName }}
-{{if .Description}}
-	bool "{{ .Description }}"
-{{else}}
-	bool "{{ .ProjectName }} Unikraft library"
-{{end}}
-	default n
+{{if .Description }}	bool "{{ .Description }}"
+{{else }}	bool "{{ .ProjectName }} Unikraft library"
+{{end}}	default n
 
-{{range $index, $element := .Kconfig_dependencies}}
-	select {{ $element }}
-{{end}}
-
-{{if .LibKName }}
-
-{{if .ProvideMain}}
+{{if .LibKName -}}
+{{if .ProvideMain -}}
 config {{ .LibKName }}_MAIN_FUNCTION
 	bool "Provide main function"
 	default n
-{{end}}
-
-{{end}}`
+{{end -}}
+{{end -}}`
 }
+
+// Removed from config:
+// {{range $index, $cd ..element := .Kconfig_dependencies}}
+// 	select {{ $element }}
+// {{end}}
