@@ -35,6 +35,7 @@ import (
 	qmpv1alpha "kraftkit.sh/machine/qemu/qmp/v1alpha"
 	"kraftkit.sh/unikraft/export/v0/ukargparse"
 	"kraftkit.sh/unikraft/export/v0/uknetdev"
+	"kraftkit.sh/unikraft/export/v0/vfscore"
 )
 
 const (
@@ -286,6 +287,45 @@ func (service *machineV1alpha1Service) Create(ctx context.Context, machine *mach
 				i++
 			}
 		}
+	}
+
+	var automounts []string
+
+	for i, vol := range machine.Spec.Volumes {
+		switch vol.Spec.Driver {
+		case "9pfs":
+			hvirtioid := fmt.Sprintf("hvirtio%d", i+1)
+			mounttag := fmt.Sprintf("fs%d", i+1)
+			qopts = append(qopts,
+				WithFsDevice(QemuFsDevLocal{
+					SecurityModel: QemuFsDevLocalSecurityModelPassthrough,
+					Id:            hvirtioid,
+					Path:          vol.Spec.Source,
+				}),
+				WithDevice(QemuDeviceVirtio9pPci{
+					Fsdev:    hvirtioid,
+					MountTag: mounttag,
+				}),
+			)
+
+			automounts = append(automounts, vfscore.NewAutomount(
+				mounttag,
+				vol.Spec.Destination,
+				vol.Spec.Driver,
+				// TODO(nderjung): Options (such as ro/rw) are yet supported by
+				// Unikraft:
+				"0",
+			).String())
+
+		default:
+			return machine, fmt.Errorf("unsupported QEMU volume driver: %v", vol.Spec.Driver)
+		}
+	}
+
+	if len(automounts) > 0 {
+		kernelArgs = append(kernelArgs,
+			vfscore.ParamVfsAutomount.WithValue(automounts),
+		)
 	}
 
 	// TODO(nderjung): This is standard "Unikraft" positional argument syntax
