@@ -50,6 +50,9 @@ type Application interface {
 	// Libraries returns the application libraries' configurations
 	Libraries(ctx context.Context) (map[string]*lib.LibraryConfig, error)
 
+	// InternalLibraries returns the available libraries from Unikraft's core.
+	InternalLibraries(ctx context.Context) (map[string]*lib.LibraryConfig, error)
+
 	// Targets returns the application's targets
 	Targets() []target.Target
 
@@ -187,6 +190,40 @@ func (app application) Libraries(ctx context.Context) (map[string]*lib.LibraryCo
 	}
 
 	return libs, nil
+}
+
+func (app application) InternalLibraries(ctx context.Context) (map[string]*lib.LibraryConfig, error) {
+	tree, err := app.KConfigTree(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	internal := map[string]*lib.LibraryConfig{}
+
+	if err := tree.Walk(func(menu *kconfig.KConfigMenu) error {
+		if menu.Kind != kconfig.MenuMenuConfig {
+			return nil
+		}
+
+		// Only identy menus that are from the internal Unikraft core repository
+		if !strings.HasPrefix(menu.Source, filepath.Join(app.unikraft.Path(), "lib")) {
+			return nil
+		}
+
+		// Check if the library was enabled
+
+		fmt.Printf("name = %s\n", menu.Name)
+		fmt.Printf("prompt = %s\n", menu.Prompt.Text)
+		fmt.Printf("file = %#v\n\n", menu.Source)
+
+		// library := lib.NewFromDir()
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return internal, nil
 }
 
 func (app application) Targets() []target.Target {
