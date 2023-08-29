@@ -21,6 +21,7 @@ import (
 	"github.com/containerd/containerd/namespaces"
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/nerdctl/pkg/imgutil/dockerconfigresolver"
+	regtypes "github.com/docker/docker/api/types/registry"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
@@ -37,11 +38,12 @@ const (
 type ContainerdHandler struct {
 	client    *containerd.Client
 	namespace string
+	auths     map[string]regtypes.AuthConfig
 }
 
 // NewContainerdHandler creates a Resolver-compatible interface given the
 // containerd address and namespace.
-func NewContainerdHandler(ctx context.Context, address, namespace string, opts ...containerd.ClientOpt) (context.Context, *ContainerdHandler, error) {
+func NewContainerdHandler(ctx context.Context, address, namespace string, auths map[string]regtypes.AuthConfig, opts ...containerd.ClientOpt) (context.Context, *ContainerdHandler, error) {
 	client, err := containerd.New(address, opts...)
 	if err != nil {
 		return nil, nil, err
@@ -57,7 +59,11 @@ func NewContainerdHandler(ctx context.Context, address, namespace string, opts .
 	clog.G(ctx).Logger.Formatter = log.G(ctx).Formatter
 	clog.G(ctx).Logger.Level = log.G(ctx).Level
 
-	return ctx, &ContainerdHandler{client: client, namespace: namespace}, nil
+	return ctx, &ContainerdHandler{
+		client:    client,
+		namespace: namespace,
+		auths:     auths,
+	}, nil
 }
 
 // NewContainerdWithClient create a containerd Resolver-compatible with an
@@ -487,6 +493,14 @@ func (handle *ContainerdHandler) PushImage(ctx context.Context, ref string, targ
 		ctx,
 		strings.Split(ref, "/")[0],
 		dockerconfigresolver.WithSkipVerifyCerts(true),
+		dockerconfigresolver.WithAuthCreds(func(domain string) (string, string, error) {
+			auth, ok := handle.auths[domain]
+			if !ok {
+				return "", "", nil
+			}
+
+			return auth.Username, auth.Password, nil
+		}),
 	)
 	if err != nil {
 		return err

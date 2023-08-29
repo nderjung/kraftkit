@@ -101,6 +101,11 @@ func NewPackageFromTarget(ctx context.Context, targ target.Target, opts ...packm
 		return nil, err
 	}
 
+	auths, err := defaultAuths(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if contAddr := config.G[config.KraftKit](ctx).ContainerdAddr; len(contAddr) > 0 {
 		namespace := DefaultNamespace
 		if n := os.Getenv("CONTAINERD_NAMESPACE"); n != "" {
@@ -112,7 +117,7 @@ func NewPackageFromTarget(ctx context.Context, targ target.Target, opts ...packm
 			"namespace": namespace,
 		}).Debug("oci: packaging via containerd")
 
-		ctx, ocipack.handle, err = handler.NewContainerdHandler(ctx, contAddr, namespace)
+		ctx, ocipack.handle, err = handler.NewContainerdHandler(ctx, contAddr, namespace, auths)
 	} else {
 		if gerr := os.MkdirAll(config.G[config.KraftKit](ctx).RuntimeDir, fs.ModeSetgid|0o775); gerr != nil {
 			return nil, fmt.Errorf("could not create local oci cache directory: %w", gerr)
@@ -124,7 +129,7 @@ func NewPackageFromTarget(ctx context.Context, targ target.Target, opts ...packm
 			"path": ociDir,
 		}).Trace("oci: directory handler")
 
-		ocipack.handle, err = handler.NewDirectoryHandler(ociDir)
+		ocipack.handle, err = handler.NewDirectoryHandler(ociDir, auths)
 	}
 	if err != nil {
 		return nil, err
