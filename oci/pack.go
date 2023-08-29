@@ -41,12 +41,13 @@ type ociPackage struct {
 	image  *Image
 
 	// Embedded attributes which represent target.Target
-	arch    arch.Architecture
-	plat    plat.Platform
-	kconfig kconfig.KeyValueMap
-	kernel  string
-	initrd  *initrd.InitrdConfig
-	command []string
+	arch       arch.Architecture
+	plat       plat.Platform
+	kconfig    kconfig.KeyValueMap
+	kernel     string
+	initrd     *initrd.InitrdConfig
+	entrypoint string
+	command    []string
 }
 
 var (
@@ -257,6 +258,7 @@ func NewPackageFromTarget(ctx context.Context, targ target.Target, opts ...packm
 		}
 	}
 
+	image.SetEntrypoint(ctx, ocipack.Entrypoint())
 	image.SetCmd(ctx, ocipack.Command())
 	image.SetOS(ctx, ocipack.Platform().Name())
 	image.SetArchitecture(ctx, ocipack.Architecture().Name())
@@ -551,6 +553,11 @@ func (ocipack *ociPackage) KernelDbg() string {
 // Initrd implements unikraft.target.Target
 func (ocipack *ociPackage) Initrd() *initrd.InitrdConfig {
 	return ocipack.initrd
+}
+
+// Entrypoint implements unikraft.target.Target
+func (ocipack *ociPackage) Entrypoint() string {
+	return ocipack.entrypoint
 }
 
 // Command implements unikraft.target.Target

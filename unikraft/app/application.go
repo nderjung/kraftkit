@@ -53,6 +53,10 @@ type Application interface {
 	// Targets returns the application's targets
 	Targets() []target.Target
 
+	// Entrypoint is the desired program, whether source code or binary that is
+	// executed by the application.
+	Entrypoint() string
+
 	// Extensions returns the application's extensions
 	Extensions() component.Extensions
 
@@ -137,6 +141,7 @@ type application struct {
 	unikraft      *core.UnikraftConfig
 	libraries     map[string]*lib.LibraryConfig
 	targets       []*target.TargetConfig
+	entrypoint    string
 	kraftfile     *Kraftfile
 	configuration kconfig.KeyValueMap
 	extensions    component.Extensions
@@ -195,6 +200,10 @@ func (app application) Targets() []target.Target {
 		targets = append(targets, target.Target(t))
 	}
 	return targets
+}
+
+func (app application) Entrypoint() string {
+	return app.entrypoint
 }
 
 func (app application) Extensions() component.Extensions {

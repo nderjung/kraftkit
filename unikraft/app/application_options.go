@@ -117,6 +117,16 @@ func WithTemplate(template *template.TemplateConfig) ApplicationOption {
 	}
 }
 
+// WithEntrypoint sets the application entrypoint which is either a path to a
+// binary when used in conjunction with a runtime or a source file or directory
+// when used as part of a compile-time language and Unikraft.
+func WithEntrypoint(entrypoint string) ApplicationOption {
+	return func(ac *application) error {
+		ac.entrypoint = entrypoint
+		return nil
+	}
+}
+
 // WithUnikraft sets the application's core
 func WithUnikraft(unikraft *core.UnikraftConfig) ApplicationOption {
 	return func(ac *application) error {

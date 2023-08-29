@@ -54,6 +54,15 @@ func NewApplicationFromInterface(ctx context.Context, iface map[string]interface
 		}
 	}
 
+	if n, ok := iface["entrypoint"]; ok {
+		switch v := n.(type) {
+		case string:
+			app.entrypoint = v
+		default:
+			return nil, errors.New("entrypoint must be a string")
+		}
+	}
+
 	if popts.resolvePaths {
 		app.outDir = popts.RelativePath(outdir)
 	}

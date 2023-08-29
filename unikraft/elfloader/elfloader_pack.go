@@ -148,6 +148,11 @@ func (elfloader *ELFLoader) Initrd() *initrd.InitrdConfig {
 }
 
 // Command implements kraftkit.sh/unikraft.target.Target
+func (elfloader *ELFLoader) Entrypoint() string {
+	return elfloader.pack.(target.Target).Entrypoint()
+}
+
+// Command implements kraftkit.sh/unikraft.target.Target
 func (elfloader *ELFLoader) Command() []string {
 	return elfloader.pack.(target.Target).Command()
 }

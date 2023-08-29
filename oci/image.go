@@ -205,6 +205,11 @@ func (image *Image) SetOSFeature(_ context.Context, feature ...string) {
 	image.config.OSFeatures = append(image.config.OSFeatures, feature...)
 }
 
+// Set the entrypoint of the image.
+func (image *Image) SetEntrypoint(_ context.Context, entrypoint string) {
+	image.config.Config.Entrypoint = []string{entrypoint}
+}
+
 // Set the command of the image.
 func (image *Image) SetCmd(_ context.Context, cmd []string) {
 	image.config.Config.Cmd = cmd

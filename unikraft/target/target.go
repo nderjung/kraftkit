@@ -39,6 +39,9 @@ type Target interface {
 	// Initrd contains the initramfs configuration for this target.
 	Initrd() *initrd.InitrdConfig
 
+	// The entrypoint for this target.
+	Entrypoint() string
+
 	// Command is the command-line arguments set for this target.
 	Command() []string
 
@@ -72,6 +75,9 @@ type TargetConfig struct {
 
 	// initrd is the configuration for the initrd.
 	initrd *initrd.InitrdConfig
+
+	// entrypoint is the specific program that is executed by this target.
+	entrypoint string
 
 	// command is the command-line arguments set for this target.
 	command []string
@@ -132,6 +138,10 @@ func (tc *TargetConfig) Type() unikraft.ComponentType {
 
 func (tc *TargetConfig) Path() string {
 	return ""
+}
+
+func (tc *TargetConfig) Entrypoint() string {
+	return tc.entrypoint
 }
 
 func (tc *TargetConfig) Command() []string {
