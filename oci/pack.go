@@ -47,7 +47,7 @@ type ociPackage struct {
 	plat    plat.Platform
 	kconfig kconfig.KeyValueMap
 	kernel  string
-	initrd  *initrd.InitrdConfig
+	initrd  initrd.Initrd
 	command []string
 }
 
@@ -180,31 +180,9 @@ func NewPackageFromTarget(ctx context.Context, targ target.Target, opts ...packm
 
 	if popts.Initrd() != "" {
 		log.G(ctx).Debug("oci: including initrd")
-		initRdPath := popts.Initrd()
-		if f, err := os.Stat(initRdPath); err == nil && f.IsDir() {
-			cwd, err2 := os.Getwd()
-			if err2 != nil {
-				return nil, err2
-			}
-
-			file, err := os.CreateTemp("", "kraftkit-oci-archive-*")
-			if err != nil {
-				return nil, err
-			}
-			defer os.Remove(file.Name())
-
-			cfg, err2 := initrd.NewFromMapping(cwd,
-				file.Name(),
-				fmt.Sprintf("%s:/", initRdPath))
-			if err2 != nil {
-				return nil, err2
-			}
-
-			initRdPath = cfg.Output
-		}
 		layer, err := NewLayerFromFile(ctx,
 			ocispec.MediaTypeImageLayer,
-			initRdPath,
+			popts.Initrd(),
 			WellKnownInitrdPath,
 			WithLayerAnnotation(AnnotationKernelInitrdPath, WellKnownInitrdPath),
 		)
@@ -510,7 +488,7 @@ unpack:
 		// Set the initrd if available
 		initrdPath := filepath.Join(popts.Workdir(), WellKnownInitrdPath)
 		if f, err := os.Stat(initrdPath); err == nil && f.Size() > 0 {
-			ocipack.initrd, err = initrd.NewFromFile(popts.Workdir(), initrdPath)
+			ocipack.initrd, err = initrd.New(ctx, initrdPath)
 			if err != nil {
 				return err
 			}
@@ -571,7 +549,7 @@ func (ocipack *ociPackage) KernelDbg() string {
 }
 
 // Initrd implements unikraft.target.Target
-func (ocipack *ociPackage) Initrd() *initrd.InitrdConfig {
+func (ocipack *ociPackage) Initrd() initrd.Initrd {
 	return ocipack.initrd
 }
 
