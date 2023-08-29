@@ -57,6 +57,9 @@ type Application interface {
 	// executed by the application.
 	Entrypoint() string
 
+	// Command is the list of arguments passed to the application's runtime.
+	Command() []string
+
 	// Extensions returns the application's extensions
 	Extensions() component.Extensions
 
@@ -142,6 +145,7 @@ type application struct {
 	libraries     map[string]*lib.LibraryConfig
 	targets       []*target.TargetConfig
 	entrypoint    string
+	command       []string
 	kraftfile     *Kraftfile
 	configuration kconfig.KeyValueMap
 	extensions    component.Extensions
@@ -204,6 +208,10 @@ func (app application) Targets() []target.Target {
 
 func (app application) Entrypoint() string {
 	return app.entrypoint
+}
+
+func (app application) Command() []string {
+	return app.command
 }
 
 func (app application) Extensions() component.Extensions {

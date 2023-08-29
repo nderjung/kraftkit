@@ -171,6 +171,7 @@ func NewProjectFromOptions(ctx context.Context, opts ...ProjectOption) (Applicat
 		WithUnikraft(app.unikraft),
 		WithTemplate(app.template),
 		WithEntrypoint(app.entrypoint),
+		WithCommand(app.command...),
 		WithLibraries(app.libraries),
 		WithTargets(app.targets),
 		WithConfiguration(popts.kconfig.Slice()...),
