@@ -29,6 +29,7 @@ type KraftKit struct {
 	ContainerdAddr string `yaml:"containerd_addr,omitempty" env:"KRAFTKIT_CONTAINERD_ADDR" long:"containerd-addr" usage:"Address of containerd daemon socket" default:""`
 	EventsPidFile  string `yaml:"events_pidfile" env:"KRAFTKIT_EVENTS_PIDFILE" long:"events-pid-file" usage:"Events process ID used when running multiple unikernels"`
 	UserGroup      string `yaml:"user_group" env:"KRAFTKIT_USER_GROUP" long:"user-group" usage:"Group to use for common files" default:"kraftkit"`
+	BuildKitHost   string `yaml:"buildkit_host" env:"KRAFTKIT_BUILDKIT_HOST" long:"buildkit-host" usage:"Path to the buildkit host"`
 
 	Paths struct {
 		Plugins   string `yaml:"plugins,omitempty" env:"KRAFTKIT_PATHS_PLUGINS" long:"plugins-dir" usage:"Path to KraftKit plugin directory"`

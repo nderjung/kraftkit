@@ -77,8 +77,8 @@ func (runner *runnerKernel) Prepare(ctx context.Context, opts *Run, machine *mac
 		machine.Spec.Architecture = opts.Architecture
 	}
 
-	if len(opts.InitRd) > 0 {
-		machine.Status.InitrdPath = opts.InitRd
+	if len(opts.Rootfs) > 0 {
+		machine.Status.InitrdPath = opts.Rootfs
 	}
 
 	return nil

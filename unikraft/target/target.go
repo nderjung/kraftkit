@@ -37,7 +37,7 @@ type Target interface {
 	KernelDbg() string
 
 	// Initrd contains the initramfs configuration for this target.
-	Initrd() *initrd.InitrdConfig
+	Initrd() initrd.Initrd
 
 	// The entrypoint for this target.
 	Entrypoint() string
@@ -74,7 +74,7 @@ type TargetConfig struct {
 	kernelDbg string
 
 	// initrd is the configuration for the initrd.
-	initrd *initrd.InitrdConfig
+	initrd initrd.Initrd
 
 	// entrypoint is the specific program that is executed by this target.
 	entrypoint string
@@ -124,7 +124,7 @@ func (tc *TargetConfig) KernelDbg() string {
 	return tc.kernelDbg
 }
 
-func (tc *TargetConfig) Initrd() *initrd.InitrdConfig {
+func (tc *TargetConfig) Initrd() initrd.Initrd {
 	return tc.initrd
 }
 
