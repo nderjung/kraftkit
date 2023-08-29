@@ -37,6 +37,7 @@ func runners() []runner {
 		&runnerLinuxu{},
 		&runnerKernel{},
 		&runnerKraftfileUnikraft{},
+		&runnerKraftfileRuntime{},
 	}
 
 	for _, pm := range packmanager.PackageManagers() {
