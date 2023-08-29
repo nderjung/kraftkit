@@ -53,6 +53,10 @@ type Application interface {
 	// Targets returns the application's targets
 	Targets() []target.Target
 
+	// Rootfs is the desired path containing the filesystem that will be mounted
+	// as the root filesystem.  This can either be an initramdisk or a volume.
+	Rootfs() string
+
 	// Entrypoint is the desired program, whether source code or binary that is
 	// executed by the application.
 	Entrypoint() string
@@ -146,6 +150,7 @@ type application struct {
 	targets       []*target.TargetConfig
 	entrypoint    string
 	command       []string
+	rootfs        string
 	kraftfile     *Kraftfile
 	configuration kconfig.KeyValueMap
 	extensions    component.Extensions
@@ -204,6 +209,10 @@ func (app application) Targets() []target.Target {
 		targets = append(targets, target.Target(t))
 	}
 	return targets
+}
+
+func (app application) Rootfs() string {
+	return app.rootfs
 }
 
 func (app application) Entrypoint() string {
