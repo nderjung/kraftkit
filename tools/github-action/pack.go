@@ -6,8 +6,11 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"strings"
 
+	"kraftkit.sh/log"
 	"kraftkit.sh/pack"
 	"kraftkit.sh/packmanager"
 	"kraftkit.sh/unikraft"
@@ -52,6 +55,11 @@ func (opts *GithubAction) packAndPush(ctx context.Context) error {
 	packs, err := pm.Pack(ctx, opts.target, popts...)
 	if err != nil {
 		return err
+	}
+
+	if err := runScript(ctx, fmt.Sprintf("%s/.kraftkit/after_pach.sh", opts.workspace)); err != nil {
+		log.G(ctx).Errorf("failed to execute `after_pach` script: %v", err)
+		os.Exit(1)
 	}
 
 	if opts.Push {
