@@ -61,6 +61,7 @@ type GithubAction struct {
 	project    app.Application
 	target     target.Target
 	initrdPath string
+	workspace  string
 }
 
 func runScript(ctx context.Context, path string) error {
@@ -83,12 +84,12 @@ func (opts *GithubAction) Pre(cmd *cobra.Command, args []string) (err error) {
 
 	ctx := cmd.Context()
 
-	workspace := os.Getenv("GITHUB_WORKSPACE")
-	if workspace == "" {
-		workspace = "/github/workspace"
+	opts.workspace = os.Getenv("GITHUB_WORKSPACE")
+	if opts.workspace == "" {
+		opts.workspace = "/github/workspace"
 	}
 
-	if err := runScript(ctx, fmt.Sprintf("%s/.kraftkit/before.sh", workspace)); err != nil {
+	if err := runScript(ctx, fmt.Sprintf("%s/.kraftkit/before.sh", opts.workspace)); err != nil {
 		log.G(ctx).Errorf("could not run before script: %v", err)
 		os.Exit(1)
 	}
@@ -260,13 +261,8 @@ func (opts *GithubAction) Run(ctx context.Context, args []string) error {
 		}
 	}
 
-	workspace := os.Getenv("GITHUB_WORKSPACE")
-	if workspace == "" {
-		workspace = "/github/workspace"
-	}
-
 	// Run the after script even if the context is cancelled
-	if err := runScript(ctx, fmt.Sprintf("%s/.kraftkit/after.sh", workspace)); err != nil {
+	if err := runScript(ctx, fmt.Sprintf("%s/.kraftkit/after.sh", opts.workspace)); err != nil {
 		return fmt.Errorf("could not run after script: %v", err)
 	}
 
