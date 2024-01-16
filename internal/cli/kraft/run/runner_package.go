@@ -18,7 +18,6 @@ import (
 	volumeapi "kraftkit.sh/api/volume/v1alpha1"
 	"kraftkit.sh/config"
 	"kraftkit.sh/initrd"
-	"kraftkit.sh/kconfig"
 	"kraftkit.sh/log"
 	"kraftkit.sh/machine/platform"
 	"kraftkit.sh/pack"
@@ -257,7 +256,11 @@ func (runner *runnerPackage) Prepare(ctx context.Context, opts *RunOptions, mach
 
 	// If automounting is disabled, and an initramfs is provided, set it as a
 	// volume if a initram has been provided.
-	if fstab, ok := targ.KConfig().Get("CONFIG_LIBVFSCORE_FSTAB"); ok && fstab.Value == kconfig.Yes && (len(machine.Status.InitrdPath) > 0 || len(opts.Rootfs) > 0) {
+	if targ.KConfig().AnyYes(
+		"CONFIG_LIBVFSCORE_FSTAB", // Deprecated
+		"CONFIG_LIBVFSCORE_AUTOMOUNT_EINITRD",
+		"CONFIG_LIBVFSCORE_AUTOMOUNT_CI_EINITRD",
+	) && (len(machine.Status.InitrdPath) > 0 || len(opts.Rootfs) > 0) {
 		machine.Spec.Volumes = append(machine.Spec.Volumes, volumeapi.Volume{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "fs0",
