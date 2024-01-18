@@ -264,33 +264,36 @@ func (runner *runnerKraftfileRuntime) Prepare(ctx context.Context, opts *RunOpti
 		machine.Status.KernelPath = runtime.Kernel()
 	}
 
-	if opts.Rootfs == "" {
-		if runner.project.Rootfs() != "" {
-			opts.Rootfs = runner.project.Rootfs()
-		} else if runtime.Initrd() != nil {
-			machine.Status.InitrdPath, err = runtime.Initrd().Build(ctx)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	// If automounting is disabled, and an initramfs is provided, set it as a
-	// volume if a initram has been provided.
+	// If automounting is disabled,
 	if !runtime.KConfig().AnyYes(
 		"CONFIG_LIBVFSCORE_FSTAB", // Deprecated
 		"CONFIG_LIBVFSCORE_AUTOMOUNT_EINITRD",
 		"CONFIG_LIBVFSCORE_AUTOMOUNT_CI_EINITRD",
-	) && (len(machine.Status.InitrdPath) > 0 || len(opts.Rootfs) > 0) {
-		machine.Spec.Volumes = append(machine.Spec.Volumes, volumeapi.Volume{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "rootfs",
-			},
-			Spec: volumeapi.VolumeSpec{
-				Driver:      "initrd",
-				Destination: "/",
-			},
-		})
+	) {
+		if opts.Rootfs == "" {
+			if runner.project.Rootfs() != "" {
+				opts.Rootfs = runner.project.Rootfs()
+			} else if runtime.Initrd() != nil {
+				machine.Status.InitrdPath, err = runtime.Initrd().Build(ctx)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// and an initramfs is provided, set it as a volume if a initram has been
+		// provided.
+		if len(machine.Status.InitrdPath) > 0 || len(opts.Rootfs) > 0 {
+			machine.Spec.Volumes = append(machine.Spec.Volumes, volumeapi.Volume{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "rootfs",
+				},
+				Spec: volumeapi.VolumeSpec{
+					Driver:      "initrd",
+					Destination: "/",
+				},
+			})
+		}
 	}
 
 	if err := opts.parseKraftfileVolumes(ctx, runner.project, machine); err != nil {
