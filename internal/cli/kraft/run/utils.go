@@ -201,7 +201,7 @@ func (opts *RunOptions) parseVolumes(ctx context.Context, machine *machineapi.Ma
 			hostPath = split[0]
 			mountPath = split[1]
 		} else {
-			return fmt.Errorf("invalid syntax for --volume=%s expected --volume=<host>:<machine>", volLine)
+			return fmt.Errorf("invalid syntax for --volume=%s expected --volume=<host>/<vol_name>:<machine>", volLine)
 		}
 
 		var driver string
@@ -225,7 +225,20 @@ func (opts *RunOptions) parseVolumes(ctx context.Context, machine *machineapi.Ma
 			return fmt.Errorf("could not find compatible volume driver for %s", hostPath)
 		}
 
-		vol, err := controllers[driver].Create(ctx, &volumeapi.Volume{
+		// Check if this could be a named volume
+		vol, err := controllers[driver].Get(ctx, &volumeapi.Volume{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: hostPath,
+			},
+		})
+
+		if err == nil && vol.Spec.Source != "" {
+			vol.Spec.Destination = mountPath
+			machine.Spec.Volumes = append(machine.Spec.Volumes, *vol)
+			continue
+		}
+
+		vol, err = controllers[driver].Create(ctx, &volumeapi.Volume{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: hostPath,
 			},
@@ -298,7 +311,20 @@ func (opts *RunOptions) parseKraftfileVolumes(ctx context.Context, project app.A
 			return fmt.Errorf("could not find compatible volume driver for %s", volcfg.Source())
 		}
 
-		vol, err := controllers[driver].Create(ctx, &volumeapi.Volume{
+		// Check if this could be a named volume
+		vol, err := controllers[driver].Get(ctx, &volumeapi.Volume{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: volcfg.Source(),
+			},
+		})
+
+		if err == nil && vol.Spec.Source != "" {
+			vol.Spec.Destination = volcfg.Destination()
+			machine.Spec.Volumes = append(machine.Spec.Volumes, *vol)
+			continue
+		}
+
+		vol, err = controllers[driver].Create(ctx, &volumeapi.Volume{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: volcfg.Source(),
 			},
