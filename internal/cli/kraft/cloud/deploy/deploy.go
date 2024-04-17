@@ -54,7 +54,7 @@ type DeployOptions struct {
 	Output                 string                    `local:"true" long:"output" short:"o" usage:"Set output format"`
 	Ports                  []string                  `local:"true" long:"port" short:"p" usage:"Specify the port mapping between external to internal"`
 	Project                app.Application           `noattribute:"true"`
-	Replicas               int                       `local:"true" long:"replicas" short:"R" usage:"Number of replicas of the instance" default:"0"`
+	Replicas               uint                      `local:"true" long:"replicas" short:"R" usage:"Number of replicas of the instance" default:"0"`
 	Rollout                create.RolloutStrategy    `noattribute:"true"`
 	RolloutQualifier       create.RolloutQualifier   `noattribute:"true"`
 	RolloutWait            time.Duration             `local:"true" long:"rollout-wait" usage:"Time to wait before performing rolling out action" default:"10s"`

@@ -43,7 +43,7 @@ type CreateOptions struct {
 	Output                 string                    `local:"true" long:"output" short:"o" usage:"Set output format. Options: table,yaml,json,list" default:"table"`
 	Ports                  []string                  `local:"true" long:"port" short:"p" usage:"Specify the port mapping between external to internal"`
 	RestartPolicy          kcinstances.RestartPolicy `noattribute:"true"`
-	Replicas               int                       `local:"true" long:"replicas" short:"R" usage:"Number of replicas of the instance" default:"0"`
+	Replicas               uint                      `local:"true" long:"replicas" short:"R" usage:"Number of replicas of the instance" default:"0"`
 	Rollout                RolloutStrategy           `noattribute:"true"`
 	RolloutQualifier       RolloutQualifier          `noattribute:"true"`
 	RolloutWait            time.Duration             `local:"true" long:"rollout-wait" usage:"Time to wait before performing rolling out action" default:"10s"`
@@ -177,7 +177,7 @@ func Create(ctx context.Context, opts *CreateOptions, args ...string) (*kcclient
 		req.MemoryMB = &opts.Memory
 	}
 	if opts.Replicas > 0 {
-		req.Replicas = &opts.Replicas
+		req.Replicas = ptr(int(opts.Replicas))
 	}
 
 	for _, vol := range opts.Volumes {
@@ -682,3 +682,5 @@ func (opts *CreateOptions) Run(ctx context.Context, args []string) error {
 
 	return nil
 }
+
+func ptr[T comparable](v T) *T { return &v }
