@@ -74,7 +74,7 @@ func (opts *List) Run(ctx context.Context, args []string) error {
 
 	for _, volume := range volumes.Items {
 		items = append(items, volTable{
-			id:     string(volume.UID),
+			id:     string(volume.Name),
 			driver: opts.driver,
 			source: volume.Spec.Source,
 			status: volume.Status.State,

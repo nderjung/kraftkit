@@ -10,30 +10,17 @@ import (
 	"os"
 	"path/filepath"
 
-	zip "api.zip"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
 	volumev1alpha1 "kraftkit.sh/api/volume/v1alpha1"
 	"kraftkit.sh/config"
 	"kraftkit.sh/log"
-	"kraftkit.sh/store"
 )
 
 type v1alpha1Volume struct{}
 
 func NewVolumeServiceV1alpha1(ctx context.Context, opts ...any) (volumev1alpha1.VolumeService, error) {
-	embeddedStore, err := store.NewEmbeddedStore[volumev1alpha1.VolumeSpec, volumev1alpha1.VolumeStatus](
-		filepath.Join(
-			config.G[config.KraftKit](ctx).RuntimeDir,
-			"volumev1alpha1",
-		),
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return volumev1alpha1.NewVolumeServiceHandler(ctx, &v1alpha1Volume{}, zip.WithStore[volumev1alpha1.VolumeSpec, volumev1alpha1.VolumeStatus](embeddedStore, zip.StoreRehydrationNever))
+	return &v1alpha1Volume{}, nil
 }
 
 // Create implements kraftkit.sh/api/volume/v1alpha1.Create
@@ -52,16 +39,19 @@ func (*v1alpha1Volume) Create(ctx context.Context, volume *volumev1alpha1.Volume
 		// If no Source is specified, create a new volume entry in the runtime store
 		log.G(ctx).Debugf("creating new volume entry in the runtime store %s", volume.ObjectMeta.UID)
 		volume.Spec.Source = filepath.Join(config.G[config.KraftKit](ctx).RuntimeDir, "volumes", string(volume.ObjectMeta.UID))
-		// Create the volume directory if it does not exist
-		if err := os.MkdirAll(volume.Spec.Source, 0755); err != nil {
-			return volume, fmt.Errorf("cannot create volume directory: %w", err)
-		}
+	}
+
+	// TODO turn into absolute path
+	// volume.Spec.Source = volume.Spec.Source
+
+	// Create the volume directory if it does not exist
+	if err := os.MkdirAll(volume.Spec.Source, 0755); err != nil {
+		return volume, fmt.Errorf("cannot create volume directory: %w", err)
 	}
 
 	if _, err := os.Stat(volume.Spec.Source); err != nil {
 		return volume, fmt.Errorf("cannot stat host path volume: %w", err)
 	}
-	volume.Status.State = volumev1alpha1.VolumeStateBound
 
 	return volume, nil
 }
@@ -73,11 +63,24 @@ func (*v1alpha1Volume) Delete(_ context.Context, _ *volumev1alpha1.Volume) (*vol
 
 // Get implements kraftkit.sh/api/volume/v1alpha1.Get
 func (*v1alpha1Volume) Get(_ context.Context, volume *volumev1alpha1.Volume) (*volumev1alpha1.Volume, error) {
+	if len(volume.Spec.Driver) == 0 || volume.Spec.Driver != "9pfs" {
+		return nil, nil
+	}
+
+	if len(volume.Spec.Source) == 0 {
+		return nil, nil
+	}
+
 	return volume, nil
 }
 
 // List implements kraftkit.sh/api/volume/v1alpha1.List
 func (*v1alpha1Volume) List(_ context.Context, volumes *volumev1alpha1.VolumeList) (*volumev1alpha1.VolumeList, error) {
+	return volumes, nil
+}
+
+// List implements kraftkit.sh/api/volume/v1alpha1.List
+func (*v1alpha1Volume) Update(_ context.Context, volumes *volumev1alpha1.VolumeList) (*volumev1alpha1.VolumeList, error) {
 	return volumes, nil
 }
 

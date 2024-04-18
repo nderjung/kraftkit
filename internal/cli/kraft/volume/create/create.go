@@ -54,11 +54,11 @@ func (opts *CreateOptions) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	if _, err := controller.Get(ctx, &volumeapi.Volume{
+	if vol, err := controller.Get(ctx, &volumeapi.Volume{
 		ObjectMeta: v1.ObjectMeta{
 			Name: args[0],
 		},
-	}); err == nil {
+	}); err != nil || vol != nil {
 		return fmt.Errorf("volume %s already exists", args[0])
 	}
 
