@@ -199,11 +199,10 @@ runs:
       ACTION_WORKSPACE=$(echo "${GITHUB_WORKSPACE}" | grep -Eo "^.*work")
       docker run \
         $([ "${{ inputs.privileged }}" = "true" ] && echo -n "--privileged") \
-        --workdir /github/workspace \
+        --workdir "${GITHUB_WORKSPACE}" \
         --rm \
         --env-file <(env) \
         -e "CI=true" \
-        -e "GITHUB_WORKSPACE=/github/workspace" \
         -e "INPUT_ARCH=${{ inputs.arch }}" \
         -e "INPUT_ARGS=${{ inputs.args }}" \
         -e "INPUT_AUTHS=${{ inputs.auths }}" \
@@ -227,7 +226,7 @@ runs:
         -v "${ACTION_WORKSPACE}/_temp/_github_home":"/github/home" \
         -v "${ACTION_WORKSPACE}/_temp/_github_workflow":"/github/workflow" \
         -v "${ACTION_WORKSPACE}/_temp/_runner_file_commands":"/home/runner/work/_temp/_runner_file_commands" \
-        -v "${GITHUB_WORKSPACE}":"/github/workspace" \
+        -v "${GITHUB_WORKSPACE}":"${GITHUB_WORKSPACE}" \
         kraftkit.sh/github-action:v0
 
   - name: Stop BuildKit
