@@ -246,6 +246,7 @@ runs:
         -v "${ACTION_WORKSPACE}/_temp/_github_workflow":"/github/workflow" \
         -v "${ACTION_WORKSPACE}/_temp/_runner_file_commands":"/home/runner/work/_temp/_runner_file_commands" \
         -v "${GITHUB_WORKSPACE}":"/github/workspace" \
+        -v "${GITHUB_OUTPUT}":"${GITHUB_OUTPUT}" \
         kraftkit.sh/github-action:v0
 
   - name: Stop BuildKit
